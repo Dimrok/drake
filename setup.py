@@ -1,6 +1,6 @@
 import setuptools
 
-with open('README.mdown', 'r', encoding = 'utf-8') as fh:
+with open('README.md', 'r', encoding = 'utf-8') as fh:
   long_description = fh.read()
 
 with open('requirements.txt', 'r') as fr:
@@ -8,7 +8,7 @@ with open('requirements.txt', 'r') as fr:
 
 setuptools.setup(
   name = 'drake',
-  version = '0.2.0',
+  version = '0.2.1',
   author = 'Quentin (mefyl) Hocquet',
   author_email = 'mefyl@gruntech.org',
   description = 'The well-formed build system',

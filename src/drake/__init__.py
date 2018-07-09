@@ -4383,7 +4383,7 @@ def Extractor(tarball, *args, **kwargs):
 
 class Zipper(Builder):
 
-  def __init__(self, target, sources, prefix = None, whole_folder = None):
+  def __init__(self, target, sources, prefix = '.', whole_folder = None):
 
     """ Constructor
     """
@@ -4413,7 +4413,7 @@ class Zipper(Builder):
       else:
         for source in self.__sources:
           source = source.path()
-          filename = source.without_prefix(self.__prefix, force = True)
+          filename = source.canonize().without_prefix(self.__prefix, force = True)
           archive.write(str(source), arcname = str(filename))
     return True
 

@@ -48,9 +48,9 @@ pip3 install -r requirements.txt
 Consider the following hierarchy:
 ```bash
  .
- ├── build
-(│   └── drake)
- └── drakefile
+ - build
+(  - drake)
+ - drakefile
 ```
 
 The `drakefile`, located at **./drakefile**, contains the list of sources, targets, builders transforming sources to targets, etc.

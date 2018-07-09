@@ -453,11 +453,31 @@ class Config:
     return res
 
   class Standard:
+
+    KNOWN = []
+
     def __init__(self, name):
       self.__name = name
+      type(self).KNOWN.append(self)
+
     def __str__(self):
       return 'C++ %s' % self.__name
 
+    def flag(self, toolkit = None):
+      # GCC 4.8 does not recognize std=c++14, but enables the
+      # features nonetheless with std=c++11
+      if self.__name == '14':
+        if toolkit and toolkit is GccToolkit.Kind.gcc and toolkit.version[:2] == (4, 8):
+          return 'c++11'
+      return 'c++-{}'.format(self.name)
+
+    def __init__(self, name):
+      self.__name = name
+
+    def __str__(self):
+      return 'C++ %s' % self.__name
+
+  cxx_17 = Standard('17')
   cxx_14 = Standard('14')
   cxx_11 = Standard('11')
   cxx_0x = Standard('0x')
@@ -583,6 +603,9 @@ class Toolkit(metaclass = _ToolkitType):
   def hook_bin_src(self):
     return self._hook_bin_src
 
+  @property
+  def version(self):
+    raise NotImplementedError('version')
 
 class GccToolkit(Toolkit):
 
@@ -683,6 +706,10 @@ class GccToolkit(Toolkit):
       self.res = '%swindres' % self.prefix
 
   @property
+  def version(self):
+    return self.__version
+
+  @property
   def compiler_cxx(self):
     return self.__compiler_cxx
 
@@ -777,22 +804,10 @@ class GccToolkit(Toolkit):
     std = cfg._Config__standard
     if std is None:
       pass
-    elif std is Config.cxx_98:
-      res.append('-std=c++98')
-    elif std is Config.cxx_0x:
-      res.append('-std=c++0x')
-    elif std is Config.cxx_11:
-      res.append('-std=c++11')
-    elif std is Config.cxx_14:
-      if self.__kind is GccToolkit.Kind.gcc \
-         and self.__version[:2] == (4, 8):
-        # GCC 4.8 does not recognize std=c++14, but enables the
-        # features nonetheless with std=c++11
-        res.append('-std=c++11')
-      else:
-        res.append('-std=c++14')
+    elif std in Config.Standard.KNOWN:
+      res.append('-std={}'.format(std.flag(self)))
     else:
-        raise Exception('Unknown C++ standard: %s' % std)
+      raise Exception('Unknown C++ standard: %s' % std)
     if cfg.warnings:
         res.append('-Wall')
     for warning, enable in cfg.warnings:

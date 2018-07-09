@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+
+import drake
+import drake.cxx
+from utils import *
+
+assertIn(drake.cxx.Config.cxx_98, drake.cxx.Config.Standard.Known)
+assertIn(drake.cxx.Config.cxx_0x, drake.cxx.Config.Standard.Known)
+assertIn(drake.cxx.Config.cxx_11, drake.cxx.Config.Standard.Known)
+assertIn(drake.cxx.Config.cxx_14, drake.cxx.Config.Standard.Known)
+assertIn(drake.cxx.Config.cxx_17, drake.cxx.Config.Standard.Known)
+
+assertEq(drake.cxx.Config.cxx_98.flag(), 'c++98')
+assertEq(drake.cxx.Config.cxx_0x.flag(), 'c++0x')
+assertEq(drake.cxx.Config.cxx_11.flag(), 'c++11')
+assertEq(drake.cxx.Config.cxx_14.flag(), 'c++14')
+assertEq(drake.cxx.Config.cxx_17.flag(), 'c++17')
+
+# Extending known standards.
+number_of_currently_known_standards = len(drake.cxx.Config.Standard.Known)
+cxx_1000 = drake.cxx.Config.Standard('1000')
+assertEq(len(drake.cxx.Config.Standard.Known), number_of_currently_known_standards + 1)
+assertIn(cxx_1000, drake.cxx.Config.Standard.Known)
+assertEq(cxx_1000.flag(), 'c++1000')
+
+# Exceptions.
+class FakeToolkit(drake.cxx.Toolkit):
+
+  @property
+  def version(self):
+    return (4, 8, 1)
+
+  @property
+  def kind(self):
+    return drake.cxx.GccToolkit.Kind.gcc
+
+  cflags = drake.cxx.GccToolkit.cflags
+
+assertEq(drake.cxx.Config.cxx_14.flag(), 'c++14')
+assertEq(drake.cxx.Config.cxx_14.flag(toolkit = FakeToolkit()), 'c++11')
+
+# Flags
+tk = FakeToolkit()
+cfg = drake.cxx.Config()
+
+assertNotIn('-std=c++17', tk.cflags(cfg = cfg))
+cfg.standard = drake.cxx.Config.cxx_17
+assertIn('-std=c++17', tk.cflags(cfg = cfg))

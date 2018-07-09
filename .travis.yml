@@ -3,8 +3,7 @@ python:
   - "3.6"
 install:
   - "pip install -r requirements.txt"
-  - "git config --global user.email mefyl@gruntech.org"
-  - "git config --global user.name mefyl"
+  - "git config --global user.email antony.mechin@gmail.com"
+  - "git config --global user.name dimrok"
 script:
-  - tests/test.py
   - cd _build && ./drake //check

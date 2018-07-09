@@ -3,7 +3,7 @@ python:
   - "3.6"
 install:
   - "pip install -r requirements.txt"
-  - "git config --global user.email mefyl@gruntech.org"
-  - "git config --global user.name mefyl"
+  - "git config --global user.email drake.ci.travis@gmail.com"
+  - "git config --global user.name ci.travis"
 script:
   - cd _build && ./drake //check

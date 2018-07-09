@@ -86,6 +86,7 @@ def configure(prefix = '.'):
     'base/version',
     'cxx/copied-libraries',
     'cxx/chained-static-libraries',
+    'cxx/standard',
     'doctest',
     'git/base',
     'sched',

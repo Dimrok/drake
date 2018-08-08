@@ -573,7 +573,8 @@ class GccToolkit(Toolkit):
     Toolkit.__init__(self)
     self.os = os
     self.__include_path = None
-    self.cxx = compiler or os.environ.get('CXX', 'g++')
+    environ = os.environ or {}
+    self.cxx = compiler or environ.get('CXX', 'g++')
     self.__patchelf = drake.Path('patchelf')
     self.__splitted = None
     try:
@@ -629,12 +630,12 @@ class GccToolkit(Toolkit):
       self.__version = tuple(map(int, self.preprocess_values(vars)))
     else:
       raise Exception('unknown GCC kind')
-    self.c = compiler_c or os.environ.get('CC', '%s%s%s' % (self.prefix,
-                                                            self.basename
-                                                            # Order matters.
-                                                            .replace('clang++', 'clang')
-                                                            .replace('g++', 'gcc'),
-                                                            self.suffix))
+    self.c = compiler_c or environ.get('CC', '%s%s%s' % (self.prefix,
+                                                         self.basename
+                                                         # Order matters.
+                                                         .replace('clang++', 'clang')
+                                                         .replace('g++', 'gcc'),
+                                                         self.suffix))
     if archiver:
       self.ar = archiver
     else:

@@ -392,45 +392,45 @@ profile_pickling = Profile('dependencies files writing')
 
 class NodeRedefinition(Exception):
 
-    """Thrown when a node is redefined.
+  """Thrown when a node is redefined.
 
-    In most cases, this exception will not be seen by the user
-    since all primitives (even node constructors) will return the
-    existing node if it exists."""
+  In most cases, this exception will not be seen by the user
+  since all primitives (even node constructors) will return the
+  existing node if it exists."""
 
-    def __init__(self, name_absolute):
-        """Build a redefinition exception.
+  def __init__(self, name_absolute):
+    """Build a redefinition exception.
 
-        name_absolute -- the absolute name of the redefined node."""
-        Exception.__init__(self)
-        self.__name = name_absolute
+    name_absolute -- the absolute name of the redefined node."""
+    Exception.__init__(self)
+    self.__name = name_absolute
 
-    def __str__(self):
-        """Description, with the redefined node name."""
-        return 'node redefinition: %s' % self.__name
+  def __str__(self):
+    """Description, with the redefined node name."""
+    return 'node redefinition: %s' % self.__name
 
-    def name(self):
-        """The absolute name of the redefined node.
+  def name(self):
+    """The absolute name of the redefined node.
 
-        See Node.name_absolute."""
-        return self.__name
+    See Node.name_absolute."""
+    return self.__name
 
 class NoBuilder(Exception):
 
-    """Node raised when a Node builder is missing.
+  """Node raised when a Node builder is missing.
 
-    Raised when a Nodehas no builder and its associated file does not
-    exist.
+  Raised when a Nodehas no builder and its associated file does not
+  exist.
+  """
+
+  def __init__(self, node):
+    """Build a NoBuilder exception.
+
+    node -- the node whose builder is missing.
     """
-
-    def __init__(self, node):
-        """Build a NoBuilder exception.
-
-        node -- the node whose builder is missing.
-        """
-        self.__node = node
-        Exception.__init__(self,
-                           'no builder to make %s' % self.__node)
+    self.__node = node
+    Exception.__init__(self,
+                       'no builder to make %s' % self.__node)
 
 
 class BuilderRedefinition(Exception):
@@ -637,45 +637,45 @@ class Path:
 
 
   def remove(self, err = False):
-      """Remove the target file.
+    """Remove the target file.
 
-      err -- Whether this is an error for non-existent file.
+    err -- Whether this is an error for non-existent file.
 
-      No-op if the file does not exist, unless err is true.
+    No-op if the file does not exist, unless err is true.
 
-      >>> p = Path('/tmp/.drake.foo')
-      >>> p.touch()
-      >>> p.exists()
-      True
-      >>> p.remove()
-      >>> p.exists()
-      False
-      >>> p.touch()
-      >>> p.remove(True)
-      >>> p.remove(True)
-      Traceback (most recent call last):
-          ...
-      Exception: Path does not exist: /tmp/.drake.foo
-      """
-      try:
-          _OS.remove(str(self))
-      except OSError as e:
-        import sys
-        if e.errno == 2:
-          if err:
-            raise Exception('Path does not exist: %s' % str(self))
-        # OS X throws an errno 1 when trying to remove a directory.
-        elif e.errno == 21 or (sys.platform == 'darwin' and e.errno == 1):
-          shutil.rmtree(str(self))
-        else:
-          raise
+    >>> p = Path('/tmp/.drake.foo')
+    >>> p.touch()
+    >>> p.exists()
+    True
+    >>> p.remove()
+    >>> p.exists()
+    False
+    >>> p.touch()
+    >>> p.remove(True)
+    >>> p.remove(True)
+    Traceback (most recent call last):
+        ...
+    Exception: Path does not exist: /tmp/.drake.foo
+    """
+    try:
+        _OS.remove(str(self))
+    except OSError as e:
+      import sys
+      if e.errno == 2:
+        if err:
+          raise Exception('Path does not exist: %s' % str(self))
+      # OS X throws an errno 1 when trying to remove a directory.
+      elif e.errno == 21 or (sys.platform == 'darwin' and e.errno == 1):
+        shutil.rmtree(str(self))
+      else:
+        raise
 
   def __extension_get(self):
-      parts = self.__path[-1].split('.')
-      if len(parts) > 1:
-          return '.'.join(parts[1:])
-      else:
-          return ''
+    parts = self.__path[-1].split('.')
+    if len(parts) > 1:
+      return '.'.join(parts[1:])
+    else:
+      return ''
 
   def with_extension(self, value):
     '''The path with a different extension.
@@ -709,39 +709,39 @@ class Path:
         return self
 
   extension = property(
-      fget = __extension_get,
-      doc = """Extension of the file name.
+    fget = __extension_get,
+    doc = """Extension of the file name.
 
-      The extension is the part after the first dot of the basename,
-      or the empty string if there are no dot.
+    The extension is the part after the first dot of the basename,
+    or the empty string if there are no dot.
 
-      >>> Path('foo.txt').extension
-      'txt'
-      >>> Path('foo.tar.bz2').extension
-      'tar.bz2'
-      >>> Path('foo').extension
-      ''
-      """)
+    >>> Path('foo.txt').extension
+    'txt'
+    >>> Path('foo.tar.bz2').extension
+    'tar.bz2'
+    >>> Path('foo').extension
+    ''
+    """)
 
   def without_last_extension(self):
-      """Remove the last dot and what follows from the basename.
+    """Remove the last dot and what follows from the basename.
 
-      Does nothing if there is no dot.
+    Does nothing if there is no dot.
 
-      >>> p = Path('foo.tar.bz2')
-      >>> p
-      Path("foo.tar.bz2")
-      >>> p = p.without_last_extension()
-      >>> p
-      Path("foo.tar")
-      >>> p = p.without_last_extension()
-      >>> p
-      Path("foo")
-      >>> p.without_last_extension()
-      Path("foo")
-      """
-      ext = '.'.join(self.extension.split('.')[:-1])
-      return self.with_extension(ext)
+    >>> p = Path('foo.tar.bz2')
+    >>> p
+    Path("foo.tar.bz2")
+    >>> p = p.without_last_extension()
+    >>> p
+    Path("foo.tar")
+    >>> p = p.without_last_extension()
+    >>> p
+    Path("foo")
+    >>> p.without_last_extension()
+    Path("foo")
+    """
+    ext = '.'.join(self.extension.split('.')[:-1])
+    return self.with_extension(ext)
 
   def __str__(self):
     """The path as a string, adapted to the underlying OS."""
@@ -763,18 +763,18 @@ class Path:
     return self.__str
 
   def __repr__(self):
-      """Python representation."""
-      return 'Path(\"%s\")' % str(self)
+    """Python representation."""
+    return 'Path(\"%s\")' % str(self)
 
   def __lt__(self, rhs):
-      """Arbitrary comparison.
+    """Arbitrary comparison.
 
-      >>> Path('foo') < Path('foo')
-      False
-      >>> (Path('foo') < Path('bar')) ^ (Path('bar') < Path('foo'))
-      True
-      """
-      return str(self) < str(rhs)
+    >>> Path('foo') < Path('foo')
+    False
+    >>> (Path('foo') < Path('bar')) ^ (Path('bar') < Path('foo'))
+    True
+    """
+    return str(self) < str(rhs)
 
   def __hash__(self):
     """Hash value.
@@ -785,43 +785,43 @@ class Path:
     return id(self)
 
   def exists(self):
-      """Whether the designated file or directory exists.
+    """Whether the designated file or directory exists.
 
-      >>> p = Path('/tmp/.drake.foo')
-      >>> p.touch()
-      >>> p.exists()
-      True
-      >>> p.remove()
-      >>> p.exists()
-      False
-      """
-      if _OS.path.islink(str(self)):
-          return True
-      return _OS.path.exists(str(self))
+    >>> p = Path('/tmp/.drake.foo')
+    >>> p.touch()
+    >>> p.exists()
+    True
+    >>> p.remove()
+    >>> p.exists()
+    False
+    """
+    if _OS.path.islink(str(self)):
+      return True
+    return _OS.path.exists(str(self))
 
   @property
   def executable(self):
-      """Whether the designated file is executable by the user."""
-      return _OS.access(str(self), _OS.X_OK)
+    """Whether the designated file is executable by the user."""
+    return _OS.access(str(self), _OS.X_OK)
 
   def is_file(self):
-      """Whether the designated file exists and is a regular file.
+    """Whether the designated file exists and is a regular file.
 
-      >>> p = Path('/tmp/.drake.foo')
-      >>> p.touch()
-      >>> p.is_file()
-      True
-      >>> p.remove()
-      >>> p.is_file()
-      False
-      >>> p.mkpath()
-      >>> p.exists()
-      True
-      >>> p.is_file()
-      False
-      >>> p.remove()
-      """
-      return _OS.path.isfile(str(self))
+    >>> p = Path('/tmp/.drake.foo')
+    >>> p.touch()
+    >>> p.is_file()
+    True
+    >>> p.remove()
+    >>> p.is_file()
+    False
+    >>> p.mkpath()
+    >>> p.exists()
+    True
+    >>> p.is_file()
+    False
+    >>> p.remove()
+    """
+    return _OS.path.isfile(str(self))
 
   def basename(self):
     """The filename part of the path.
@@ -860,65 +860,65 @@ class Path:
                   volume = self.__volume)
 
   def touch(self):
-      """Create the designated file if it does not exists.
+    """Create the designated file if it does not exists.
 
-      Creates the parent directories if needed first.
+    Creates the parent directories if needed first.
 
-      >>> Path('/tmp/.drake').remove()
-      >>> p = Path('/tmp/.drake/.sub/.foo')
-      >>> p.touch()
-      >>> p.exists()
-      True
+    >>> Path('/tmp/.drake').remove()
+    >>> p = Path('/tmp/.drake/.sub/.foo')
+    >>> p.touch()
+    >>> p.exists()
+    True
 
-      If the file does exist, this is a no-op.
+    If the file does exist, this is a no-op.
 
-      >>> path = Path('/tmp/.drake.touch.exists')
-      >>> with open(str(path), 'w') as f:
-      ...   print('foobar', file = f)
-      >>> path.touch()
-      >>> with open(str(path), 'r') as f:
-      ...   print(f.read(), end = '')
-      foobar
-      """
-      parent = self.dirname()
-      if parent is not Path.dot:
-        parent.mkpath()
-      if not _OS.path.exists(str(self)):
-        with open(str(self), 'w') as f:
-          pass
+    >>> path = Path('/tmp/.drake.touch.exists')
+    >>> with open(str(path), 'w') as f:
+    ...   print('foobar', file = f)
+    >>> path.touch()
+    >>> with open(str(path), 'r') as f:
+    ...   print(f.read(), end = '')
+    foobar
+    """
+    parent = self.dirname()
+    if parent is not Path.dot:
+      parent.mkpath()
+    if not _OS.path.exists(str(self)):
+      with open(str(self), 'w') as f:
+        pass
 
   def mkpath(self):
-      """Create the designated directory.
+    """Create the designated directory.
 
-      Creates the parent directories if needed first.
+    Creates the parent directories if needed first.
 
-      >>> Path('/tmp/.drake').remove()
-      >>> p = Path('/tmp/.drake/.sub/')
-      >>> p.mkpath()
-      >>> p.exists()
-      True
-      """
-      if not _OS.path.exists(str(self)):
-          _OS.makedirs(str(self))
+    >>> Path('/tmp/.drake').remove()
+    >>> p = Path('/tmp/.drake/.sub/')
+    >>> p.mkpath()
+    >>> p.exists()
+    True
+    """
+    if not _OS.path.exists(str(self)):
+        _OS.makedirs(str(self))
 
   def __eq__(self, rhs):
-      """Whether self equals rhs.
+    """Whether self equals rhs.
 
-      Pathes are equals if they have the same components and
-      absoluteness.
+    Pathes are equals if they have the same components and
+    absoluteness.
 
-      >>> Path('foo/bar') == Path('foo/bar')
-      True
-      >>> Path('foo/bar') == Path('foo')
-      False
-      >>> Path('foo/bar') == Path('bar/foo')
-      False
-      >>> Path('foo/bar') == Path('/foo/bar')
-      False
-      >>> Path('/foo/bar') == Path('/foo/bar')
-      True
-      """
-      return self is drake.Path(rhs)
+    >>> Path('foo/bar') == Path('foo/bar')
+    True
+    >>> Path('foo/bar') == Path('foo')
+    False
+    >>> Path('foo/bar') == Path('bar/foo')
+    False
+    >>> Path('foo/bar') == Path('/foo/bar')
+    False
+    >>> Path('/foo/bar') == Path('/foo/bar')
+    True
+    """
+    return self is drake.Path(rhs)
 
   def __truediv__(self, rhs):
     """The concatenation of self and rhs.
@@ -950,107 +950,107 @@ class Path:
                       volume = self.__volume)
 
   def prefix_of(self, rhs):
-      """Whether self is a prefix of rhs.
+    """Whether self is a prefix of rhs.
 
-      >>> p = Path('foo/bar')
-      >>> p.prefix_of('foo/bar/baz/quux')
-      True
-      >>> p.prefix_of('foo/baz/bar/quux')
-      False
-      >>> p.prefix_of('nope')
-      False
-      """
-      rhs = drake.Path(rhs).canonize().__path
-      path = self.__path
-      while len(rhs) and len(path) and path[0] == rhs[0]:
-        rhs = rhs[1:]
-        path = path[1:]
-      return len(path) == 0
+    >>> p = Path('foo/bar')
+    >>> p.prefix_of('foo/bar/baz/quux')
+    True
+    >>> p.prefix_of('foo/baz/bar/quux')
+    False
+    >>> p.prefix_of('nope')
+    False
+    """
+    rhs = drake.Path(rhs).canonize().__path
+    path = self.__path
+    while len(rhs) and len(path) and path[0] == rhs[0]:
+      rhs = rhs[1:]
+      path = path[1:]
+    return len(path) == 0
 
   def without_prefix(self, rhs, force = True):
-      """Remove rhs prefix from self.
+    """Remove rhs prefix from self.
 
-      rhs -- the prefix to strip, as a Path or a string.
+    rhs -- the prefix to strip, as a Path or a string.
 
-      >>> p = Path('foo/bar/baz/quux')
-      >>> p
-      Path("foo/bar/baz/quux")
-      >>> p.without_prefix("foo/bar")
-      Path("baz/quux")
-      >>> p = Path('/foo/bar/baz')
-      >>> p.absolute()
-      True
-      >>> p = p.without_prefix('/foo')
-      >>> p
-      Path("bar/baz")
-      >>> p.absolute()
-      False
+    >>> p = Path('foo/bar/baz/quux')
+    >>> p
+    Path("foo/bar/baz/quux")
+    >>> p.without_prefix("foo/bar")
+    Path("baz/quux")
+    >>> p = Path('/foo/bar/baz')
+    >>> p.absolute()
+    True
+    >>> p = p.without_prefix('/foo')
+    >>> p
+    Path("bar/baz")
+    >>> p.absolute()
+    False
 
-      Rewinds if rhs is not a prefix of self.
+    Rewinds if rhs is not a prefix of self.
 
-      >>> p.without_prefix("quux")
-      Path("../bar/baz")
+    >>> p.without_prefix("quux")
+    Path("../bar/baz")
 
-      Rewinding a path entirerly yields the current directory.
+    Rewinding a path entirerly yields the current directory.
 
-      >>> Path('foo/bar').without_prefix('foo/bar')
-      Path(".")
-      """
-      rhs = drake.Path(rhs).canonize().__path
-      path = self.__path
-      while len(rhs) and len(path) and path[0] == rhs[0]:
-        rhs = rhs[1:]
-        path = path[1:]
-      if not force and len(rhs) > 0:
-        return self
-      # FIXME: naive if rhs contains some '..'
-      assert '..' not in rhs
-      path = ('..',) * len(rhs) + path
-      if not path:
-        path = ('.',)
-      return drake.Path(path,
-                        absolute = False,
-                        virtual = False,
-                        volume = '')
+    >>> Path('foo/bar').without_prefix('foo/bar')
+    Path(".")
+    """
+    rhs = drake.Path(rhs).canonize().__path
+    path = self.__path
+    while len(rhs) and len(path) and path[0] == rhs[0]:
+      rhs = rhs[1:]
+      path = path[1:]
+    if not force and len(rhs) > 0:
+      return self
+    # FIXME: naive if rhs contains some '..'
+    assert '..' not in rhs
+    path = ('..',) * len(rhs) + path
+    if not path:
+      path = ('.',)
+    return drake.Path(path,
+                      absolute = False,
+                      virtual = False,
+                      volume = '')
 
   def __len__(self):
-      return len(self.__path)
+    return len(self.__path)
 
   def without_suffix(self, rhs):
-      """Remove rhs suffix from self.
+    """Remove rhs suffix from self.
 
-      rhs -- the suffix to strip, as a Path or a string.
+    rhs -- the suffix to strip, as a Path or a string.
 
-      >>> p = Path('foo/bar/baz/quux')
-      >>> p
-      Path("foo/bar/baz/quux")
-      >>> p.without_suffix("baz/quux")
-      Path("foo/bar")
+    >>> p = Path('foo/bar/baz/quux')
+    >>> p
+    Path("foo/bar/baz/quux")
+    >>> p.without_suffix("baz/quux")
+    Path("foo/bar")
 
-      Throws if rhs is not a prefix of self.
+    Throws if rhs is not a prefix of self.
 
-      >>> p.without_suffix("baz")
-      Traceback (most recent call last):
-          ...
-      Exception: baz is not a suffix of foo/bar/baz/quux
-      """
-      rhs = drake.Path(rhs)
-      if self.__path[-len(rhs.__path):] != rhs.__path:
-        raise Exception("%s is not a suffix of %s" % (rhs, self))
-      path = self.__path[0:-len(rhs.__path):]
-      if not path:
-        path = ('.',)
-      return drake.Path(path,
-                        absolute = self.__absolute,
-                        virtual = self.__virtual,
-                        volume = self.__volume)
+    >>> p.without_suffix("baz")
+    Traceback (most recent call last):
+        ...
+    Exception: baz is not a suffix of foo/bar/baz/quux
+    """
+    rhs = drake.Path(rhs)
+    if self.__path[-len(rhs.__path):] != rhs.__path:
+      raise Exception("%s is not a suffix of %s" % (rhs, self))
+    path = self.__path[0:-len(rhs.__path):]
+    if not path:
+      path = ('.',)
+    return drake.Path(path,
+                      absolute = self.__absolute,
+                      virtual = self.__virtual,
+                      volume = self.__volume)
 
   @classmethod
   def cwd(self):
-      return Path(_OS.getcwd())
+    return Path(_OS.getcwd())
 
   def list(self):
-      return _OS.listdir(str(self))
+    return _OS.listdir(str(self))
 
   class Pickler(pickle.Pickler):
     def persistent_id(self, obj):
@@ -1098,153 +1098,153 @@ _DEPFILE_BUILDER = Path('drake.Builder')
 
 class DepFile:
 
-    """File to store dependencies of a builder and their hash.
+  """File to store dependencies of a builder and their hash.
 
-    To determine whether a builder should be executed, Drake has to
-    check whether any of its sources has changed since the last
-    build. This is done by comparing the hash of the current file with
-    the hash of the file when the builder was last
-    executed. Dependencies files store those hashes between
-    consecutive runs.
+  To determine whether a builder should be executed, Drake has to
+  check whether any of its sources has changed since the last
+  build. This is done by comparing the hash of the current file with
+  the hash of the file when the builder was last
+  executed. Dependencies files store those hashes between
+  consecutive runs.
 
-    A dependency file is attached to a builder, and has a name since
-    one builder may have several dependencies files if dependencies
-    come from different sources. Each file stores several (file, hash)
-    assocations.
-    """
+  A dependency file is attached to a builder, and has a name since
+  one builder may have several dependencies files if dependencies
+  come from different sources. Each file stores several (file, hash)
+  assocations.
+  """
 
-    def __init__(self, builder, name):
-      """Construct a dependency file for builder with given name."""
-      self.__builder = builder
-      self.name = name
-      self.__files = []
-      self.__invalid = False
-      self.__hashes = None
-      self.__dirty = False
+  def __init__(self, builder, name):
+    """Construct a dependency file for builder with given name."""
+    self.__builder = builder
+    self.name = name
+    self.__files = []
+    self.__invalid = False
+    self.__hashes = None
+    self.__dirty = False
 
-    @property
-    def hashes(self):
-      """The file hashes loaded from the disk."""
-      return self.__hashes
+  @property
+  def hashes(self):
+    """The file hashes loaded from the disk."""
+    return self.__hashes
 
-    @property
-    def dirty(self):
-      '''Whether previous build failed.'''
-      return self.__dirty
+  @property
+  def dirty(self):
+    '''Whether previous build failed.'''
+    return self.__dirty
 
-    @dirty.setter
-    def dirty(self, dirty):
-      self.__dirty = dirty
-      self.save()
+  @dirty.setter
+  def dirty(self, dirty):
+    self.__dirty = dirty
+    self.save()
 
-    def register(self, node, source = True):
-        """Add the node to the hashed files."""
-        self.__files.append((node, source))
+  def register(self, node, source = True):
+    """Add the node to the hashed files."""
+    self.__files.append((node, source))
 
-    def path(self):
-        """Path to the file storing the hashes."""
-        return self.__builder.cachedir / self.name
+  def path(self):
+    """Path to the file storing the hashes."""
+    return self.__builder.cachedir / self.name
 
-    def read(self):
-      """Read the hashes from the store file."""
-      res = []
-      if self.path().exists():
-        with profile_unpickling():
-          try:
-            with open(str(self.path()), 'rb') as f:
-              unpickled = drake.Path.Unpickler(f).load()
-              if unpickled is None:
-                self.__invalid = True
-              if isinstance(unpickled, dict):
-                self.__hashes = unpickled
-              elif isinstance(unpickled, tuple):
-                content = unpickled[1]
-                self.__dirty = content['dirty']
-                self.__hashes = content['hashes']
-              else:
-                self.__invalid = True
-          except Exception:
-            self.__invalid = True
-      else:
-        self.__hashes = {}
-
-    Hashed = object()
-    def up_to_date(self,
-                   oldest_target,
-                   oldest_mtime,
-                   mtime_implemented):
-      '''Whether targets are up to date wrt sources.
-
-      False if building is needed. The most recent source mtime as
-      a float if more recent than oldest_mtime. True otherwise.
-      '''
-      if self.__invalid:
-        return False
-      res = True
-      for path, (old_hash, data) in self.__hashes.items():
-        if old_hash is None:
-          continue
-        # FIXME: needed ?
-        # if path not in Drake.current.nodes:
-        #   del self.__hashes[path]
-        #   continue
-        n = node(path)
-        if n.missing():
-          explain(self.__builder, '%s disappeared' % path)
-          return False
-        if Drake.current.use_mtime and isinstance(n, Node):
-          try:
-            mtime = n.mtime
-          except NotImplementedError:
-            pass
-          else:
-            if mtime_implemented and mtime < oldest_mtime:
-              continue
-            elif res is True or res < mtime:
-              res = mtime
-            sched.logger.log(
-              'drake.Builder.mtime',
-              drake.log.LogLevel.debug,
-              '%s: %s is more recent than %s (%s > %s)' % (
-                self.__builder, n.path(), oldest_target,
-                mtime, oldest_mtime))
+  def read(self):
+    """Read the hashes from the store file."""
+    res = []
+    if self.path().exists():
+      with profile_unpickling():
         try:
-          h = n.hash()
+          with open(str(self.path()), 'rb') as f:
+            unpickled = drake.Path.Unpickler(f).load()
+            if unpickled is None:
+              self.__invalid = True
+            if isinstance(unpickled, dict):
+              self.__hashes = unpickled
+            elif isinstance(unpickled, tuple):
+              content = unpickled[1]
+              self.__dirty = content['dirty']
+              self.__hashes = content['hashes']
+            else:
+              self.__invalid = True
         except Exception:
-          explain(self.__builder, '%s cannot be hashed' % path)
-          return False
-        if h != old_hash:
-          explain(self.__builder, '%s has changed' % path)
-          return False
-      return res
+          self.__invalid = True
+    else:
+      self.__hashes = {}
 
-    def update(self):
-      """Rehash all files and write to the store file."""
-      self.__hashes = dict(
-        (node.name_absolute(), (node.hash() if source else None,
-                                node.drake_type()))
-        for node, source in self.__files)
-      self.__dirty = False
-      self.save()
+  Hashed = object()
+  def up_to_date(self,
+                 oldest_target,
+                 oldest_mtime,
+                 mtime_implemented):
+    '''Whether targets are up to date wrt sources.
 
-    def save(self):
-      content = {'hashes': self.__hashes, 'dirty': self.__dirty}
-      with profile_pickling():
-        path = self.path()
-        with open(str(path), 'wb') as f:
-          pickle.Pickler(f).dump((0, content))
+    False if building is needed. The most recent source mtime as
+    a float if more recent than oldest_mtime. True otherwise.
+    '''
+    if self.__invalid:
+      return False
+    res = True
+    for path, (old_hash, data) in self.__hashes.items():
+      if old_hash is None:
+        continue
+      # FIXME: needed ?
+      # if path not in Drake.current.nodes:
+      #   del self.__hashes[path]
+      #   continue
+      n = node(path)
+      if n.missing():
+        explain(self.__builder, '%s disappeared' % path)
+        return False
+      if Drake.current.use_mtime and isinstance(n, Node):
+        try:
+          mtime = n.mtime
+        except NotImplementedError:
+          pass
+        else:
+          if mtime_implemented and mtime < oldest_mtime:
+            continue
+          elif res is True or res < mtime:
+            res = mtime
+          sched.logger.log(
+            'drake.Builder.mtime',
+            drake.log.LogLevel.debug,
+            '%s: %s is more recent than %s (%s > %s)' % (
+              self.__builder, n.path(), oldest_target,
+              mtime, oldest_mtime))
+      try:
+        h = n.hash()
+      except Exception:
+        explain(self.__builder, '%s cannot be hashed' % path)
+        return False
+      if h != old_hash:
+        explain(self.__builder, '%s has changed' % path)
+        return False
+    return res
 
-    def remove(self):
-      """Rehash all files and write to the store file."""
-      self.path().remove()
+  def update(self):
+    """Rehash all files and write to the store file."""
+    self.__hashes = dict(
+      (node.name_absolute(), (node.hash() if source else None,
+                              node.drake_type()))
+      for node, source in self.__files)
+    self.__dirty = False
+    self.save()
 
-    def __repr__(self):
-        """Python representation."""
-        return 'DepFile(%r, %r)' % (self.name, self.__builder)
+  def save(self):
+    content = {'hashes': self.__hashes, 'dirty': self.__dirty}
+    with profile_pickling():
+      path = self.path()
+      with open(str(path), 'wb') as f:
+        pickle.Pickler(f).dump((0, content))
 
-    def __str__(self):
-        """String representation."""
-        return repr(self)
+  def remove(self):
+    """Rehash all files and write to the store file."""
+    self.path().remove()
+
+  def __repr__(self):
+    """Python representation."""
+    return 'DepFile(%r, %r)' % (self.name, self.__builder)
+
+  def __str__(self):
+    """String representation."""
+    return repr(self)
 
 def path_build(path = None, absolute = False):
   """Return path as found in the build directory.
@@ -1281,16 +1281,16 @@ def path_root():
 
 class _BaseNodeTypeType(type):
 
-    node_types = {}
+  node_types = {}
 
-    def __call__(c, name, *arg, **kwargs):
+  def __call__(c, name, *arg, **kwargs):
 
-        res = type.__call__(c, name, *arg, **kwargs)
-        k = '%s.%s' % (res.__module__, res.__name__)
-        _BaseNodeTypeType.node_types[k] = res
-        return res
+    res = type.__call__(c, name, *arg, **kwargs)
+    k = '%s.%s' % (res.__module__, res.__name__)
+    _BaseNodeTypeType.node_types[k] = res
+    return res
 
-        return type.__call__(*arg)
+    return type.__call__(*arg)
 
 class _BaseNodeType(type, metaclass = _BaseNodeTypeType):
 
@@ -1389,16 +1389,16 @@ class BaseNode(object, metaclass = _BaseNodeType):
 
   @classmethod
   def drake_type(self):
-      """The qualified name of this type."""
-      return '%s.%s' % (self.__module__, self.__name__)
+    """The qualified name of this type."""
+    return '%s.%s' % (self.__module__, self.__name__)
 
   def __str__(self):
-      """String representation."""
-      return str(self.__name)
+    """String representation."""
+    return str(self.__name)
 
   def __repr__(self):
-      """Python representation."""
-      return '%s(%s)' % (self.__class__.drake_type(), self.name())
+    """Python representation."""
+    return '%s(%s)' % (self.__class__.drake_type(), self.name())
 
   def build(self):
     """Build this node.
@@ -1432,36 +1432,36 @@ class BaseNode(object, metaclass = _BaseNodeType):
     return self.builder.build_status
 
   def polish(self):
-      """A hook called when a node has been built.
+    """A hook called when a node has been built.
 
-      Called when a node has been built, that is, when all its
-      dependencies have been built and the builder run. Default
-      implementation does nothing.
+    Called when a node has been built, that is, when all its
+    dependencies have been built and the builder run. Default
+    implementation does nothing.
 
-      >>> class MyNode (Node):
-      ...   def polish(self):
-      ...     print('Polishing.')
-      >>> n = MyNode('/tmp/.drake.polish')
-      >>> n.path().remove()
-      >>> b = TouchBuilder(n)
-      >>> n.build()
-      Touch /tmp/.drake.polish
-      Polishing.
-      """
-      pass
+    >>> class MyNode (Node):
+    ...   def polish(self):
+    ...     print('Polishing.')
+    >>> n = MyNode('/tmp/.drake.polish')
+    >>> n.path().remove()
+    >>> b = TouchBuilder(n)
+    >>> n.build()
+    Touch /tmp/.drake.polish
+    Polishing.
+    """
+    pass
 
   def clean(self):
-      """Clean recursively for this node sources."""
-      if self.builder is not None:
-          self.builder.clean()
+    """Clean recursively for this node sources."""
+    if self.builder is not None:
+        self.builder.clean()
 
   def missing(self):
-      """Whether this node is missing and must be built.
+    """Whether this node is missing and must be built.
 
-      Always False, so unless redefined, BaseNode are built only if
-      a dependency changed.
-      """
-      return False
+    Always False, so unless redefined, BaseNode are built only if
+    a dependency changed.
+    """
+    return False
 
   def makefile_name(self):
     path = self.path() if isinstance(self, Node)  \
@@ -1496,12 +1496,12 @@ class BaseNode(object, metaclass = _BaseNodeType):
       dependency.makefile(marks)
 
   def report_dependencies(self, dependencies):
-      """Called when dependencies have been built.
+    """Called when dependencies have been built.
 
-      This hook is always called no matter whether the nodes
-      were successfully built or not.
-      """
-      pass
+    This hook is always called no matter whether the nodes
+    were successfully built or not.
+    """
+    pass
 
   @property
   def builder(self):
@@ -1593,19 +1593,19 @@ class BaseNode(object, metaclass = _BaseNodeType):
 
 class VirtualNode(BaseNode):
 
-    """BaseNode that does not represent a file.
+  """BaseNode that does not represent a file.
 
-    These may be configuration or meta information such as the version
-    system revision, used by other nodes as sources. They are also
-    used to implement Rule, which is a node that recursively builds
-    other nodes, but does not directly produce a file.
-    """
+  These may be configuration or meta information such as the version
+  system revision, used by other nodes as sources. They are also
+  used to implement Rule, which is a node that recursively builds
+  other nodes, but does not directly produce a file.
+  """
 
-    def __init__(self, name):
-        """Create a virtual node with the given name."""
-        path = drake.Drake.current.prefix / name
-        path = drake.Path(path._Path__path, False, True)
-        BaseNode.__init__(self, path)
+  def __init__(self, name):
+    """Create a virtual node with the given name."""
+    path = drake.Drake.current.prefix / name
+    path = drake.Path(path._Path__path, False, True)
+    BaseNode.__init__(self, path)
 
 
 class Node(BaseNode):
@@ -1622,16 +1622,16 @@ class Node(BaseNode):
     self.__path_absolute = None
 
   def clone(self, path):
-        """Clone of this node, with an other path."""
-        return Node(path)
+    """Clone of this node, with an other path."""
+    return Node(path)
 
   def clean(self):
-        """Clean this node's file if it is generated, and recursively
-        its sources recursively."""
-        BaseNode.clean(self)
-        if self.builder is not None and self.path().exists():
-            print('Deleting %s' % self)
-            _OS.remove(str(self.path()))
+    """Clean this node's file if it is generated, and recursively
+    its sources recursively."""
+    BaseNode.clean(self)
+    if self.builder is not None and self.path().exists():
+      print('Deleting %s' % self)
+      _OS.remove(str(self.path()))
 
   def path(self, absolute = False):
     """Filesystem path to node file, relative to the root of the
@@ -1714,12 +1714,12 @@ class Node(BaseNode):
       self.builder.run()
 
   def __repr__(self):
-        """Filesystem path to the node file, as a string."""
-        return str(self.path())
+    """Filesystem path to the node file, as a string."""
+    return str(self.path())
 
   @property
   def install_command(self):
-      return None
+    return None
 
   @property
   def mtime(self):
@@ -1806,12 +1806,12 @@ def node(path, type = None):
 
 
 def nodes(*paths, type = None):
-    """Call node() on each given path and return the list of results.
+  """Call node() on each given path and return the list of results.
 
-    nodes('foo', 'bar', ...) is equivalent to
-    [node('foo'), node('bar'), ...]
-    """
-    return list(map(lambda p: node(p, type = type), paths))
+  nodes('foo', 'bar', ...) is equivalent to
+  [node('foo'), node('bar'), ...]
+  """
+  return list(map(lambda p: node(p, type = type), paths))
 
 
 def run_command(cmd, cwd = None, env = None, timeout = TIMEOUT,
@@ -2464,103 +2464,103 @@ class Builder:
 
 class ShellCommand(Builder):
 
-    """A builder that runs a shell command.
+  """A builder that runs a shell command.
 
-    This builder is a commodity to create a builder that simply runs a
-    shell commands, or to subclass so you don't need to reimplement
-    execute.
+  This builder is a commodity to create a builder that simply runs a
+  shell commands, or to subclass so you don't need to reimplement
+  execute.
 
-    >>> path = Path("/tmp/.drake.foo")
-    >>> n = node("/tmp/.drake.foo")
-    >>> b = ShellCommand([], [n], ['touch', '/tmp/.drake.foo'])
-    >>> path.remove()
-    >>> n.build()
-    touch /tmp/.drake.foo
-    >>> path.exists()
-    True
+  >>> path = Path("/tmp/.drake.foo")
+  >>> n = node("/tmp/.drake.foo")
+  >>> b = ShellCommand([], [n], ['touch', '/tmp/.drake.foo'])
+  >>> path.remove()
+  >>> n.build()
+  touch /tmp/.drake.foo
+  >>> path.exists()
+  True
+  """
+
+  def __init__(self, sources, targets, command,
+         pretty = None,
+         cwd = None,
+         workdir = None,
+         environment = None,
+         stdout = None):
+    """Create a builder that runs command.
+
+    sources -- List of source nodes, or source node if
+           there's only one.
+    targets -- List of target nodes, or target node if
+           there's only one.
+    command -- The shell command to run.
+    pretty  -- Optional pretty printing.
     """
-
-    def __init__(self, sources, targets, command,
-                 pretty = None,
-                 cwd = None,
-                 workdir = None,
-                 environment = None,
-                 stdout = None):
-        """Create a builder that runs command.
-
-        sources -- List of source nodes, or source node if
-                   there's only one.
-        targets -- List of target nodes, or target node if
-                   there's only one.
-        command -- The shell command to run.
-        pretty  -- Optional pretty printing.
-        """
-        if isinstance(stdout, Node) and stdout not in targets:
-          targets.append(stdout)
-        Builder.__init__(self, sources, targets)
-        self.__command = command
-        self.__pretty = pretty
-        if cwd is not None:
-          warnings.warn(
-            'drake.ShellCommand `cwd` argument is deprecated in favor of `workdir`',
-            DeprecationWarning)
-          self.__workdir = cwd
-        else:
-          self.__workdir = workdir
-        self.__environment = environment
-        self.__stdout = stdout
+    if isinstance(stdout, Node) and stdout not in targets:
+      targets.append(stdout)
+    Builder.__init__(self, sources, targets)
+    self.__command = command
+    self.__pretty = pretty
+    if cwd is not None:
+      warnings.warn(
+      'drake.ShellCommand `cwd` argument is deprecated in favor of `workdir`',
+      DeprecationWarning)
+      self.__workdir = cwd
+    else:
+      self.__workdir = workdir
+    self.__environment = environment
+    self.__stdout = stdout
 
 
-    def execute(self):
-        """Run the command given at construction time."""
-        return self.cmd(self.__pretty or ' '.join(self.command),
-                        self.command,
-                        cwd = self.__workdir,
-                        env = self.__environment,
-                        redirect_stdout = self.__stdout)
+  def execute(self):
+    """Run the command given at construction time."""
+    return self.cmd(self.__pretty or ' '.join(self.command),
+            self.command,
+            cwd = self.__workdir,
+            env = self.__environment,
+            redirect_stdout = self.__stdout)
 
-    @property
-    def command(self):
-        return self.__command
+  @property
+  def command(self):
+    return self.__command
 
-    @property
-    def pretty(self):
-        return self.__pretty
+  @property
+  def pretty(self):
+    return self.__pretty
 
-    def hash(self):
-      return self.__command
+  def hash(self):
+    return self.__command
 
-    def __str__(self):
-      return 'ShellCommand(%s)' % (self.__pretty or '')
+  def __str__(self):
+    return 'ShellCommand(%s)' % (self.__pretty or '')
 
 class Dictionary(VirtualNode):
 
-    """A virtual node that represents a dictionary.
+  """A virtual node that represents a dictionary.
 
-    This kind of node is useful to represent a set of key/value
-    association that can be used as in input source for a builder,
-    such as configuration.
+  This kind of node is useful to represent a set of key/value
+  association that can be used as in input source for a builder,
+  such as configuration.
+  """
+
+  def __init__(self, name, content = {}):
+    """Build a dictionary with given content.
+
+    name  -- The node name.
+    content -- The content, as a dictionary.
     """
+    VirtualNode.__init__(self, '%s' % name)
+    self.content = content
 
-    def __init__(self, name, content = {}):
-        """Build a dictionary with given content.
+  def hash(self):
+    """Hash value."""
+    # FIXME: sha1 of the string repr ain't optimal
+    items = list(self)
+    items.sort()
+    return hashlib.sha1(str(items).encode('utf-8')).hexdigest()
 
-        name    -- The node name.
-        content -- The content, as a dictionary.
-        """
-        VirtualNode.__init__(self, '%s' % name)
-        self.content = content
-
-    def hash(self):
-        """Hash value."""
-        # FIXME: sha1 of the string repr ain't optimal
-        items = list(self)
-        items.sort()
-        return hashlib.sha1(str(items).encode('utf-8')).hexdigest()
-
-    def __iter__(self):
-        """Iterate over the (key, value) pairs."""
-        return iter(self.content.items())
+  def __iter__(self):
+    """Iterate over the (key, value) pairs."""
+    return iter(self.content.items())
 
 
 class Converter(Builder):
@@ -2586,189 +2586,189 @@ class Converter(Builder):
 
 class Expander(Builder):
 
-    """A builder that expands content of Dictionary in text.
+  """A builder that expands content of Dictionary in text.
 
-    This class becomes useful when subclass define the content()
-    method, that returns text in which to expand values. See
-    FileExpander, TextExpander and FunctionExpander.
+  This class becomes useful when subclass define the content()
+  method, that returns text in which to expand values. See
+  FileExpander, TextExpander and FunctionExpander.
 
-    >>> class MyExpander(Expander):
-    ...     def __init__(self, content, *args, **kwargs):
-    ...         Expander.__init__(self, *args, **kwargs)
-    ...         self.__content = content
-    ...     def content(self):
-    ...         return self.__content
-    >>> colors  = Dictionary('colors',  { 'apple-color':  'red',
-    ...                                   'banana-color':  'yellow' })
-    >>> lengths = Dictionary('lengths', { 'apple-length': 10,
-    ...                                   'banana-length': 15 })
-    >>> target = Node('/tmp/.drake.expander.1')
-    >>> builder = MyExpander(
-    ...   'Apples are @apple-color@, bananas are @banana-color@.',
-    ...   [colors, lengths], target)
-    >>> target.path().remove()
-    >>> target.build()
-    Expand /tmp/.drake.expander.1
-    >>> with open('/tmp/.drake.expander.1') as f:
-    ...   content = f.read()
-    >>> content
-    'Apples are red, bananas are yellow.\\n'
+  >>> class MyExpander(Expander):
+  ...     def __init__(self, content, *args, **kwargs):
+  ...         Expander.__init__(self, *args, **kwargs)
+  ...         self.__content = content
+  ...     def content(self):
+  ...         return self.__content
+  >>> colors  = Dictionary('colors',  { 'apple-color':  'red',
+  ...                                   'banana-color':  'yellow' })
+  >>> lengths = Dictionary('lengths', { 'apple-length': 10,
+  ...                                   'banana-length': 15 })
+  >>> target = Node('/tmp/.drake.expander.1')
+  >>> builder = MyExpander(
+  ...   'Apples are @apple-color@, bananas are @banana-color@.',
+  ...   [colors, lengths], target)
+  >>> target.path().remove()
+  >>> target.build()
+  Expand /tmp/.drake.expander.1
+  >>> with open('/tmp/.drake.expander.1') as f:
+  ...   content = f.read()
+  >>> content
+  'Apples are red, bananas are yellow.\\n'
 
-    The expanded pattern can me configured by setting a custom
-    matcher. The matcher must be a regexp that contains at least one
-    group, it is searched in the content, then the match of the first
-    group is used as a key to search source dictionaries, and the
-    whole match is replaced with the obtained value. For instance, the
-    default '@([a-zA-Z0-9_-]+)@' will match autoconf-style variables,
-    '@name@'. Here is an example with shell-style variables $name
-    (except dashes are accepted):
+  The expanded pattern can me configured by setting a custom
+  matcher. The matcher must be a regexp that contains at least one
+  group, it is searched in the content, then the match of the first
+  group is used as a key to search source dictionaries, and the
+  whole match is replaced with the obtained value. For instance, the
+  default '@([a-zA-Z0-9_-]+)@' will match autoconf-style variables,
+  '@name@'. Here is an example with shell-style variables $name
+  (except dashes are accepted):
 
-    >>> target = Node('/tmp/.drake.expander.2')
-    >>> builder = MyExpander('Bananas are $banana-length '
-    ...                      'centimeters long.',
-    ...                      [colors, lengths], target,
-    ...                      matcher = '\\$([a-zA-Z0-9][-_a-zA-Z0-9]*)')
-    >>> target.path().remove()
-    >>> target.build()
-    Expand /tmp/.drake.expander.2
-    >>> with open('/tmp/.drake.expander.2') as f:
-    ...   content = f.read()
-    >>> content
-    'Bananas are 15 centimeters long.\\n'
+  >>> target = Node('/tmp/.drake.expander.2')
+  >>> builder = MyExpander('Bananas are $banana-length '
+  ...                      'centimeters long.',
+  ...                      [colors, lengths], target,
+  ...                      matcher = '\\$([a-zA-Z0-9][-_a-zA-Z0-9]*)')
+  >>> target.path().remove()
+  >>> target.build()
+  Expand /tmp/.drake.expander.2
+  >>> with open('/tmp/.drake.expander.2') as f:
+  ...   content = f.read()
+  >>> content
+  'Bananas are 15 centimeters long.\\n'
 
-    The behavior in case a key is not found can be adjusted with
-    missing_fatal:
+  The behavior in case a key is not found can be adjusted with
+  missing_fatal:
 
-    >>> target = Node('/tmp/.drake.expander.3')
-    >>> builder = MyExpander('Kiwis are @kiwi-color@.',
-    ...                      [colors, lengths], target)
-    >>> print(builder.missing_fatal())
-    True
-    >>> target.path().remove()
-    >>> target.build() # doctest:+ELLIPSIS
-    Traceback (most recent call last):
-      ...
-    drake...Failed: MyExpander failed
-    >>> target.builder = None
-    >>> builder = MyExpander('Kiwis are @kiwi-color@.',
-    ...                      [colors, lengths], target,
-    ...                      missing_fatal = False)
-    >>> builder.missing_fatal()
-    False
-    >>> target.build()
-    Expand /tmp/.drake.expander.3
-    >>> with open('/tmp/.drake.expander.3') as f:
-    ...   content = f.read()
-    >>> content
-    'Kiwis are @kiwi-color@.\\n'
+  >>> target = Node('/tmp/.drake.expander.3')
+  >>> builder = MyExpander('Kiwis are @kiwi-color@.',
+  ...                      [colors, lengths], target)
+  >>> print(builder.missing_fatal())
+  True
+  >>> target.path().remove()
+  >>> target.build() # doctest:+ELLIPSIS
+  Traceback (most recent call last):
+    ...
+  drake...Failed: MyExpander failed
+  >>> target.builder = None
+  >>> builder = MyExpander('Kiwis are @kiwi-color@.',
+  ...                      [colors, lengths], target,
+  ...                      missing_fatal = False)
+  >>> builder.missing_fatal()
+  False
+  >>> target.build()
+  Expand /tmp/.drake.expander.3
+  >>> with open('/tmp/.drake.expander.3') as f:
+  ...   content = f.read()
+  >>> content
+  'Kiwis are @kiwi-color@.\\n'
+  """
+
+  def __init__(self, dicts, target, sources = [],
+             matcher = '@([a-zA-Z0-9_-]+)@', missing_fatal = True):
+    """Create and expander that expands the given dictionaries.
+
+    dicts         -- The dictionaries from which to expand keys.
+    sources       -- List of additional source nodes,
+                     or additional source node if there's only one.
+    target        -- The target Node where to store the result.
+    matcher       -- A regexp to find the patterns to expand in the
+                     content.
+    missing_fatal -- Whether a key in the content missing from the
+                     dictionaries is fatal.
     """
+    if not isinstance(dicts, list):
+        dicts = [dicts]
+    super().__init__(sources + dicts, [target])
+    self.__dicts = dicts
+    self.matcher = re.compile(matcher)
+    self.__missing_fatal = missing_fatal
+    self.__target = target
 
-    def __init__(self, dicts, target, sources = [],
-               matcher = '@([a-zA-Z0-9_-]+)@', missing_fatal = True):
-      """Create and expander that expands the given dictionaries.
+  def missing_fatal(self):
+    return self.__missing_fatal
 
-      dicts         -- The dictionaries from which to expand keys.
-      sources       -- List of additional source nodes,
-                       or additional source node if there's only one.
-      target        -- The target Node where to store the result.
-      matcher       -- A regexp to find the patterns to expand in the
-                       content.
-      missing_fatal -- Whether a key in the content missing from the
-                       dictionaries is fatal.
-      """
-      if not isinstance(dicts, list):
-          dicts = [dicts]
-      super().__init__(sources + dicts, [target])
-      self.__dicts = dicts
-      self.matcher = re.compile(matcher)
-      self.__missing_fatal = missing_fatal
-      self.__target = target
+  def execute(self):
+    """Expand the keys in the content and write to target file."""
+    self.output('Expand %s' % (self.__target))
+    vars = {}
+    for d in self.__dicts:
+      vars.update(dict(d))
+    content = self.content()
+    for match in self.matcher.finditer(content):
+      key = match.group(1)
+      try:
+        content = content.replace(match.group(0),
+                    str(vars[key]))
+      except KeyError:
+        if self.__missing_fatal:
+          print('Missing expansion: %s' % key)
+          return False
 
-    def missing_fatal(self):
-        return self.__missing_fatal
+    with open(str(self.__target.path()), 'w') as f:
+      print(content, file = f)
+    return True
 
-    def execute(self):
-        """Expand the keys in the content and write to target file."""
-        self.output('Expand %s' % (self.__target))
-        vars = {}
-        for d in self.__dicts:
-            vars.update(dict(d))
-        content = self.content()
-        for match in self.matcher.finditer(content):
-            key = match.group(1)
-            try:
-                content = content.replace(match.group(0),
-                                          str(vars[key]))
-            except KeyError:
-                if self.__missing_fatal:
-                    print('Missing expansion: %s' % key)
-                    return False
+  def dictionaries(self):
+    """The list of source dictionary."""
+    return self.__dicts
 
-        with open(str(self.__target.path()), 'w') as f:
-            print(content, file = f)
-        return True
-
-    def dictionaries(self):
-        """The list of source dictionary."""
-        return self.__dicts
-
-    def target(self):
-        """The target Node."""
-        return self.__target
+  def target(self):
+    """The target Node."""
+    return self.__target
 
 class FileExpander(Expander):
-    """An Expander that takes its content from a file.
+  """An Expander that takes its content from a file.
 
-    >>> source = Node('/tmp/.drake.file.expander.source')
-    >>> with open(str(source.path()), 'w') as f:
-    ...   print('Expand @this@.', file = f)
-    >>> target = Node('/tmp/.drake.file.expander.target')
-    >>> builder = FileExpander(source, [Dictionary('d_file',
-    ...                                 { 'this': 'that' })], target)
-    >>> target.path().remove()
-    >>> target.build()
-    Expand /tmp/.drake.file.expander.target
-    >>> with open('/tmp/.drake.file.expander.target') as f:
-    ...   content = f.read()
-    >>> content
-    'Expand that.\\n\\n'
+  >>> source = Node('/tmp/.drake.file.expander.source')
+  >>> with open(str(source.path()), 'w') as f:
+  ...   print('Expand @this@.', file = f)
+  >>> target = Node('/tmp/.drake.file.expander.target')
+  >>> builder = FileExpander(source, [Dictionary('d_file',
+  ...                                 { 'this': 'that' })], target)
+  >>> target.path().remove()
+  >>> target.build()
+  Expand /tmp/.drake.file.expander.target
+  >>> with open('/tmp/.drake.file.expander.target') as f:
+  ...   content = f.read()
+  >>> content
+  'Expand that.\\n\\n'
+  """
+  def __init__(self, source, dicts, target = None, *args, **kwargs):
+    """Create a file expander.
+
+    source       -- The file to expand.
+    args, kwargs -- Rest of the arguments for Expander constructor.
     """
-    def __init__(self, source, dicts, target = None, *args, **kwargs):
-      """Create a file expander.
+    self.__source = source
+    assert isinstance(source, BaseNode)
+    if target is None:
+      target = source.name().without_last_extension()
+      target = node(target)
+    else:
+      assert isinstance(target, BaseNode)
+      self.__target = target
+    Expander.__init__(self,
+                      dicts = dicts,
+                      sources = [source],
+                      target = target,
+                      *args, **kwargs)
 
-      source       -- The file to expand.
-      args, kwargs -- Rest of the arguments for Expander constructor.
-      """
-      self.__source = source
-      assert isinstance(source, BaseNode)
-      if target is None:
-        target = source.name().without_last_extension()
-        target = node(target)
-      else:
-        assert isinstance(target, BaseNode)
-        self.__target = target
-      Expander.__init__(self,
-                        dicts = dicts,
-                        sources = [source],
-                        target = target,
-                        *args, **kwargs)
+  def execute(self):
+    if Expander.execute(self):
+      shutil.copymode(str(self.__source.path()),
+                      str(self.__target.path()))
+      return True
+    else:
+      return False
 
-    def execute(self):
-        if Expander.execute(self):
-            shutil.copymode(str(self.__source.path()),
-                            str(self.__target.path()))
-            return True
-        else:
-            return False
+  def content(self):
+    """The content of the source file."""
+    with open(str(self.__source.path()), 'r') as f:
+      return f.read()
 
-    def content(self):
-        """The content of the source file."""
-        with open(str(self.__source.path()), 'r') as f:
-          return f.read()
-
-    def source(self):
-        """The source node."""
-        return self.__source
+  def source(self):
+    """The source node."""
+    return self.__source
 
 
 class TextExpander(Expander):
@@ -2787,65 +2787,65 @@ class TextExpander(Expander):
   'Expand that.\\n'
   """
   def __init__(self, text, *args, **kwargs):
-      """Create a text expander.
+    """Create a text expander.
 
-      text         -- The text to expand.
-      args, kwargs -- Rest of the arguments for Expander constructor.
-      """
-      self.__text = text
-      Expander.__init__(self, *args, **kwargs)
+    text         -- The text to expand.
+    args, kwargs -- Rest of the arguments for Expander constructor.
+    """
+    self.__text = text
+    Expander.__init__(self, *args, **kwargs)
 
   def content(self):
-      """The text."""
-      return self.__text;
+    """The text."""
+    return self.__text;
 
   def text(self):
-      """The text."""
-      return self.__text
+    """The text."""
+    return self.__text
 
 class FunctionExpander(Expander):
 
-    """An Expander that maps a function on the dictionaries content.
+  """An Expander that maps a function on the dictionaries content.
 
-    >>> target = Node('/tmp/.drake.function.expander')
-    >>> import collections
-    >>> dict = collections.OrderedDict()
-    >>> dict['version_major'] = 4
-    >>> dict['version_minor'] = 2
-    >>> version = Dictionary('version', dict)
-    >>> def define(k, v):
-    ...     return '# define %s %s\\n' % (k.upper(), v)
-    >>> builder = FunctionExpander(define, [version], target)
-    >>> target.path().remove()
-    >>> target.build()
-    Expand /tmp/.drake.function.expander
-    >>> with open('/tmp/.drake.function.expander') as f:
-    ...   content = f.read()
-    >>> content
-    '# define VERSION_MAJOR 4\\n# define VERSION_MINOR 2\\n\\n'
+  >>> target = Node('/tmp/.drake.function.expander')
+  >>> import collections
+  >>> dict = collections.OrderedDict()
+  >>> dict['version_major'] = 4
+  >>> dict['version_minor'] = 2
+  >>> version = Dictionary('version', dict)
+  >>> def define(k, v):
+  ...     return '# define %s %s\\n' % (k.upper(), v)
+  >>> builder = FunctionExpander(define, [version], target)
+  >>> target.path().remove()
+  >>> target.build()
+  Expand /tmp/.drake.function.expander
+  >>> with open('/tmp/.drake.function.expander') as f:
+  ...   content = f.read()
+  >>> content
+  '# define VERSION_MAJOR 4\\n# define VERSION_MINOR 2\\n\\n'
+  """
+
+  def __init__(self, function, *args, **kwargs):
+    """Create a function expander.=
+
+    function     -- The function to apply on key, values pairs.
+    args, kwargs -- Rest of the arguments for Expander constructor.
     """
+    self.__function = function
+    Expander.__init__(self, *args, **kwargs)
 
-    def __init__(self, function, *args, **kwargs):
-      """Create a function expander.=
+  def content(self):
+    """The content obtained by mapping the function on the
+    dictionaries."""
+    res = ''
+    for d in self.dictionaries():
+      for key, value in d:
+        res += self.__function(key, value)
+    return res
 
-      function     -- The function to apply on key, values pairs.
-      args, kwargs -- Rest of the arguments for Expander constructor.
-      """
-      self.__function = function
-      Expander.__init__(self, *args, **kwargs)
-
-    def content(self):
-        """The content obtained by mapping the function on the
-        dictionaries."""
-        res = ''
-        for d in self.dictionaries():
-            for key, value in d:
-                res += self.__function(key, value)
-        return res
-
-    def function(self):
-        """The function."""
-        return self.__function
+  def function(self):
+    """The function."""
+    return self.__function
 
 
 class _Module:
@@ -2941,89 +2941,85 @@ class CWDPrinter:
 
 def _register_commands():
 
+  def all_if_none(nodes):
+    # Copy it, since it will change during iteration. This shouldn't
+    # be a problem, all newly inserted will be dependencies of the
+    # already existing nodes. Right?
+    return nodes or list(Drake.current.nodes.values())
 
-    def all_if_none(nodes):
-        # Copy it, since it will change during iteration. This shouldn't
-        # be a problem, all newly inserted will be dependencies of the
-        # already existing nodes. Right?
-        if len(nodes):
-            return nodes
-        else:
-            return list(Drake.current.nodes.values())
+  def build(nodes):
+    with CWDPrinter():
+      try:
+        if not len(nodes):
+          nodes = [node for node in Drake.current.nodes.values()
+                   if not len(node.consumers)]
+        coroutines = []
+        for node in nodes:
+          coroutines.append(Coroutine(node.build, str(node),
+                                      Drake.current.scheduler))
+        Drake.current.scheduler.run()
+      except Builder.Failed as e:
+        print('%s: *** %s' % (sys.argv[0], e))
+        sys.exit(1)
+  command_add('build', build)
 
-    def build(nodes):
+  def clean(nodes):
       with CWDPrinter():
-        try:
-          if not len(nodes):
-            nodes = [node for node in Drake.current.nodes.values()
-                     if not len(node.consumers)]
-          coroutines = []
-          for node in nodes:
-            coroutines.append(Coroutine(node.build, str(node),
-                                        Drake.current.scheduler))
-          Drake.current.scheduler.run()
-        except Builder.Failed as e:
-          print('%s: *** %s' % (sys.argv[0], e))
-          sys.exit(1)
-    command_add('build', build)
+          for node in all_if_none(nodes):
+              node.clean()
+  command_add('clean', clean)
 
-    def clean(nodes):
-        with CWDPrinter():
-            for node in all_if_none(nodes):
-                node.clean()
-    command_add('clean', clean)
+  def dot_cmd(nodes):
+      for node in all_if_none(nodes):
+          dot(node)
+  command_add('dot', dot_cmd)
 
-    def dot_cmd(nodes):
-        for node in all_if_none(nodes):
-            dot(node)
-    command_add('dot', dot_cmd)
-
-    def compilation_database_cmd(nodes):
-      ''' See https://clang.llvm.org/docs/JSONCompilationDatabase.html.'''
-      print("[")
-      for node in sorted(all_if_none(nodes)):
-        compilation_database(node)
-      print("]")
-    command_add('compilation-database', compilation_database_cmd)
+  def compilation_database_cmd(nodes):
+    ''' See https://clang.llvm.org/docs/JSONCompilationDatabase.html.'''
+    print("[")
+    for node in sorted(all_if_none(nodes)):
+      compilation_database(node)
+    print("]")
+  command_add('compilation-database', compilation_database_cmd)
 
 
-    def dot_show_cmd(nodes):
-        if not len(nodes):
-            print('%s: dot-show: give me some nodes to show.' % \
-                  sys.argv[0])
-        for node in nodes:
-            p = subprocess.Popen('dot -Tpng | xv -',
-                                 shell = True,
-                                 stdin = subprocess.PIPE)
-            stdout = sys.stdout
-            sys.stdout = p.stdin
-            dot(node)
-            p.communicate()
-            sys.stdout = stdout
-    command_add('dot-show', dot_show_cmd)
+  def dot_show_cmd(nodes):
+    if not len(nodes):
+      print('%s: dot-show: give me some nodes to show.' % \
+            sys.argv[0])
+    for node in nodes:
+      p = subprocess.Popen('dot -Tpng | xv -',
+                           shell = True,
+                           stdin = subprocess.PIPE)
+      stdout = sys.stdout
+      sys.stdout = p.stdin
+      dot(node)
+      p.communicate()
+      sys.stdout = stdout
+  command_add('dot-show', dot_show_cmd)
 
-    def makefile(nodes):
-        root_nodes = [node for node in Drake.current.nodes.values()
-                      if not len(node.consumers)]
-        if not len(nodes):
-            nodes = root_nodes
-        print('all: %s\n' % ' '.join(map(lambda n: n.makefile_name(),
-                                         root_nodes)))
-        marks = set()
-        for node in nodes:
-            node.makefile(marks)
-    command_add('makefile', makefile)
+  def makefile(nodes):
+    root_nodes = [node for node in Drake.current.nodes.values()
+                  if not len(node.consumers)]
+    if not len(nodes):
+      nodes = root_nodes
+    print('all: %s\n' % ' '.join(map(lambda n: n.makefile_name(),
+                                     root_nodes)))
+    marks = set()
+    for node in nodes:
+      node.makefile(marks)
+  command_add('makefile', makefile)
 
 _register_commands()
 
 _ARG_DOC_RE = re.compile('\\s*(\\w+)\\s*--\\s*(.*)')
 def _args_doc(doc):
-    res = {}
-    for line in doc.split('\n'):
-        match = _ARG_DOC_RE.match(line)
-        if match:
-            res[match.group(1)] = match.group(2)
-    return res
+  res = {}
+  for line in doc.split('\n'):
+    match = _ARG_DOC_RE.match(line)
+    if match:
+      res[match.group(1)] = match.group(2)
+  return res
 
 
 def help():
@@ -3472,63 +3468,63 @@ class Rule(VirtualNode):
 
 class EmptyBuilder(Builder):
 
-    """Builder which execution does nothing.
+  """Builder which execution does nothing.
 
-    Useful to create dependencies between nodes.
-    """
+  Useful to create dependencies between nodes.
+  """
 
-    def execute(self):
-        """Do nothing."""
-        return True
+  def execute(self):
+    """Do nothing."""
+    return True
 
 class WriteBuilder(Builder):
-    """Builder that write a given input to files.
+  """Builder that write a given input to files.
 
-    >>> n = node('/tmp/.drake.write')
-    >>> n.path().remove()
-    >>> b = WriteBuilder('Hello world!', n)
-    >>> n.build()
-    Write /tmp/.drake.write
-    >>> n.path().exists()
-    True
-    >>> with open(str(n.path()), 'r') as f:
-    ...   print(f.read())
-    Hello world!
+  >>> n = node('/tmp/.drake.write')
+  >>> n.path().remove()
+  >>> b = WriteBuilder('Hello world!', n)
+  >>> n.build()
+  Write /tmp/.drake.write
+  >>> n.path().exists()
+  True
+  >>> with open(str(n.path()), 'r') as f:
+  ...   print(f.read())
+  Hello world!
+  """
+
+  def __init__(self, input, nodes, permissions = None):
+    """Create a WriteBuilder.
+
+    input -- Text or bytes.
+    nodes -- target nodes list, or a single target node.
     """
+    if not isinstance(input, bytes):
+      input = bytes(input, encoding = 'utf-8')
+    self.__input = input
+    if isinstance(nodes, BaseNode):
+      nodes = [nodes]
+    for node in nodes:
+      assert isinstance(node, Node)
+    Builder.__init__(self, [], nodes)
+    self.__permissions = permissions
 
-    def __init__(self, input, nodes, permissions = None):
-        """Create a WriteBuilder.
-
-        input -- Text or bytes.
-        nodes -- target nodes list, or a single target node.
-        """
-        if not isinstance(input, bytes):
-          input = bytes(input, encoding = 'utf-8')
-        self.__input = input
-        if isinstance(nodes, BaseNode):
-            nodes = [nodes]
-        for node in nodes:
-            assert isinstance(node, Node)
-        Builder.__init__(self, [], nodes)
-        self.__permissions = permissions
-
-    def execute(self):
-        """Create all the non-existent target nodes as empty files."""
-        pretty = 'Write' if len(self.__input) else 'Touch'
-        self.output(
-          '%s %s' % (pretty, ', '.join(map(str, self.targets()))))
-        for node in self.targets():
-          path = str(node.path())
-          assert isinstance(node, Node)
-          node.path().touch()
-          with WritePermissions(node):
-            with open(path, 'wb', stat.S_IWUSR) as f:
-              f.write(self.__input)
-          if self.__permissions is not None:
-            _OS.chmod(
-              path,
-              _OS.stat(path).st_mode | self.__permissions)
-        return True
+  def execute(self):
+    """Create all the non-existent target nodes as empty files."""
+    pretty = 'Write' if len(self.__input) else 'Touch'
+    self.output(
+      '%s %s' % (pretty, ', '.join(map(str, self.targets()))))
+    for node in self.targets():
+      path = str(node.path())
+      assert isinstance(node, Node)
+      node.path().touch()
+      with WritePermissions(node):
+        with open(path, 'wb', stat.S_IWUSR) as f:
+          f.write(self.__input)
+      if self.__permissions is not None:
+        _OS.chmod(
+          path,
+          _OS.stat(path).st_mode | self.__permissions)
+    return True
 
 def write(body, path):
   res = node(Path(path))
@@ -3537,22 +3533,22 @@ def write(body, path):
 
 class TouchBuilder(WriteBuilder):
 
-    '''Builder that simply creates its targets as empty files.
+  '''Builder that simply creates its targets as empty files.
 
-    >>> n = node('/tmp/.drake.touchbuilder')
-    >>> n.path().remove()
-    >>> b = TouchBuilder(n)
-    >>> n.build()
-    Touch /tmp/.drake.touchbuilder
-    >>> n.path().exists()
-    True
-    '''
+  >>> n = node('/tmp/.drake.touchbuilder')
+  >>> n.path().remove()
+  >>> b = TouchBuilder(n)
+  >>> n.build()
+  Touch /tmp/.drake.touchbuilder
+  >>> n.path().exists()
+  True
+  '''
 
-    def __init__(self, nodes):
-      super().__init__('', nodes)
+  def __init__(self, nodes):
+    super().__init__('', nodes)
 
-    def __str__(self):
-      return 'TouchBuilder(%r)' % self.targets()
+  def __str__(self):
+    return 'TouchBuilder(%r)' % self.targets()
 
 def touch(path):
   res = node(Path(path))
@@ -3567,22 +3563,22 @@ class architecture(Enumerated,
 # OSes
 class os:
 
-    """Oses enum."""
+  """Oses enum."""
 
-    android = 0
-    linux = 1
-    macos = 2
-    windows = 3
-    ios = 4
-    ios_simulator = 5
+  android = 0
+  linux = 1
+  macos = 2
+  windows = 3
+  ios = 4
+  ios_simulator = 5
 
 
 def reset():
-    for node in Drake.current.nodes.values():
-        if node.builder is not None:
-            node.builder._Builder__built = False
-            node.builder._Builder__sources_dyn = {}
-    Drake.current._Drake__nodes = {}
+  for node in Drake.current.nodes.values():
+    if node.builder is not None:
+      node.builder._Builder__built = False
+      node.builder._Builder__sources_dyn = {}
+  Drake.current._Drake__nodes = {}
 
 # Configuration
 class Configuration:
@@ -3698,246 +3694,246 @@ class Configuration:
 
 class Range:
 
-    """A numeric range."""
+  """A numeric range."""
 
-    def __init__(self, inf, sup = True):
-        """Create a numeric range with the given boundaries
+  def __init__(self, inf, sup = True):
+    """Create a numeric range with the given boundaries
 
-        inf -- the inferior boundary.
-        sup -- the superior boundary. If unspecified, equals the
-               inferior boundary. If None, there is no upper bound
-               to the range (it includes any number superior or
-               equal to inf).
+    inf -- the inferior boundary.
+    sup -- the superior boundary. If unspecified, equals the
+         inferior boundary. If None, there is no upper bound
+         to the range (it includes any number superior or
+         equal to inf).
 
-        >>> 4 in Range(5)
-        False
-        >>> 5 in Range(5)
-        True
-        >>> 6 in Range(5)
-        False
+    >>> 4 in Range(5)
+    False
+    >>> 5 in Range(5)
+    True
+    >>> 6 in Range(5)
+    False
 
-        >>> 4 in Range(5, 7)
-        False
-        >>> 5 in Range(5, 7)
-        True
-        >>> 6 in Range(5, 7)
-        True
-        >>> 7 in Range(5, 7)
-        True
-        >>> 8 in Range(5, 7)
-        False
-        >>> 42 in Range(5, None)
-        True
-        """
-        if isinstance(inf, Range):
-            assert sup is True
-            sup = inf.sup()
-            inf = inf.inf()
-        assert inf is not None
-        self.__inf = inf
-        if sup is True:
-            sup = inf
-        self.__sup = sup
+    >>> 4 in Range(5, 7)
+    False
+    >>> 5 in Range(5, 7)
+    True
+    >>> 6 in Range(5, 7)
+    True
+    >>> 7 in Range(5, 7)
+    True
+    >>> 8 in Range(5, 7)
+    False
+    >>> 42 in Range(5, None)
+    True
+    """
+    if isinstance(inf, Range):
+      assert sup is True
+      sup = inf.sup()
+      inf = inf.inf()
+    assert inf is not None
+    self.__inf = inf
+    if sup is True:
+      sup = inf
+    self.__sup = sup
 
-    def sup(self):
-        return self.__sup
+  def sup(self):
+    return self.__sup
 
-    def inf(self):
-        return self.__inf
+  def inf(self):
+    return self.__inf
 
-    def __contains__(self, val):
-      """Whether val is included in self."""
-      if isinstance(val, Range):
-        return val.inf() in self and val.sup() in self
-      sup = (self.__sup is None or val <= self.__sup)
-      return val >= self.__inf and sup
+  def __contains__(self, val):
+    """Whether val is included in self."""
+    if isinstance(val, Range):
+      return val.inf() in self and val.sup() in self
+    sup = (self.__sup is None or val <= self.__sup)
+    return val >= self.__inf and sup
 
-    def __eq__(self, rhs):
-      if isinstance(rhs, Range):
-        return self.__inf == rhs.__inf and self.__sup == rhs.__sup
-      else:
-        return self.__inf == self.__sup == rhs
+  def __eq__(self, rhs):
+    if isinstance(rhs, Range):
+      return self.__inf == rhs.__inf and self.__sup == rhs.__sup
+    else:
+      return self.__inf == self.__sup == rhs
 
-    def __ge__(self, rhs):
-        return self.__inf >= rhs.__sup
+  def __ge__(self, rhs):
+    return self.__inf >= rhs.__sup
 
-    def __gt__(self, rhs):
-        return self.__inf > rhs.__sup
+  def __gt__(self, rhs):
+    return self.__inf > rhs.__sup
 
-    def __str__(self):
-        """A visual representation of the range.
+  def __str__(self):
+    """A visual representation of the range.
 
-        >>> str(Range(5))
-        '5'
-        >>> str(Range(5, 7))
-        '[5, 7]'
-        >>> str(Range(5, None))
-        '[5, ...]'
-        """
-        if self.__sup == self.__inf:
-            return str(self.__inf)
-        elif self.__sup is None:
-            return '[%s, ...]' % self.__inf
-        return '[%s, %s]' % (self.__inf, self.__sup)
+    >>> str(Range(5))
+    '5'
+    >>> str(Range(5, 7))
+    '[5, 7]'
+    >>> str(Range(5, None))
+    '[5, ...]'
+    """
+    if self.__sup == self.__inf:
+      return str(self.__inf)
+    elif self.__sup is None:
+      return '[%s, ...]' % self.__inf
+    return '[%s, %s]' % (self.__inf, self.__sup)
 
-    def __repr__(self):
-        if self.__sup == self.__inf:
-            return 'Range(%s)' % self.__inf
-        elif self.__sup is None:
-            return 'Range(%s, None)' % self.__inf
-        return 'Range(%s, %s)' % (self.__inf, self.__sup)
+  def __repr__(self):
+    if self.__sup == self.__inf:
+      return 'Range(%s)' % self.__inf
+    elif self.__sup is None:
+      return 'Range(%s, None)' % self.__inf
+    return 'Range(%s, %s)' % (self.__inf, self.__sup)
 
 class Version:
 
-    def __init__(self, major = None, minor = None, subminor = None):
-      ''' A version or range of versions.
+  def __init__(self, major = None, minor = None, subminor = None):
+    ''' A version or range of versions.
 
-      >>> Version('1.2')
-      Version(1, 2)
-      '''
-      if isinstance(major, Version) and \
-         minor is None and subminor is None:
-        self.__init__(*major)
-      elif isinstance(major, str) and \
-         minor is None and subminor is None:
-        try:
-          self.__init__(*(int(c) for c in major.split('.')))
-        except Exception as e:
-          raise Exception('invalid version: %r', major) from e
-      else:
-        assert major is not None or minor is None and subminor is None
-        assert minor is not None or subminor is None
-        self.__major = major and Range(major)
-        self.__minor = minor and Range(minor)
-        self.__subminor = subminor and Range(subminor)
+    >>> Version('1.2')
+    Version(1, 2)
+    '''
+    if isinstance(major, Version) and \
+       minor is None and subminor is None:
+      self.__init__(*major)
+    elif isinstance(major, str) and \
+       minor is None and subminor is None:
+      try:
+        self.__init__(*(int(c) for c in major.split('.')))
+      except Exception as e:
+        raise Exception('invalid version: %r', major) from e
+    else:
+      assert major is not None or minor is None and subminor is None
+      assert minor is not None or subminor is None
+      self.__major = major and Range(major)
+      self.__minor = minor and Range(minor)
+      self.__subminor = subminor and Range(subminor)
 
-    def __iter__(self):
-      yield self.major
-      yield self.minor
-      yield self.subminor
+  def __iter__(self):
+    yield self.major
+    yield self.minor
+    yield self.subminor
 
-    @staticmethod
-    @deprecated
-    def load(string):
-      # Uh ?
-      if string == str(Version()):
-        return Version()
-      # Wait what ? What if there is garbage at the end ?
-      v = string.split('.')[0:3]
-      # Seriously what is this shit. This bullshit function would
-      # accept a man page as an input. Literally, it would accept
-      # "4.8. 3-way merges in git. [...]" and consider it to be
-      # version 4.8.3. Go play tag blindfolded on the highway.
-      if len(v) == 3:
-        v[2] = v[2].split('-')[0]
-      return drake.Version(*[int(x) for x in v])
+  @staticmethod
+  @deprecated
+  def load(string):
+    # Uh ?
+    if string == str(Version()):
+      return Version()
+    # Wait what ? What if there is garbage at the end ?
+    v = string.split('.')[0:3]
+    # Seriously what is this shit. This bullshit function would
+    # accept a man page as an input. Literally, it would accept
+    # "4.8. 3-way merges in git. [...]" and consider it to be
+    # version 4.8.3. Go play tag blindfolded on the highway.
+    if len(v) == 3:
+      v[2] = v[2].split('-')[0]
+    return drake.Version(*[int(x) for x in v])
 
-    @property
-    def major(self):
-        return self.__major
+  @property
+  def major(self):
+    return self.__major
 
-    @property
-    def minor(self):
-        return self.__minor
+  @property
+  def minor(self):
+    return self.__minor
 
-    @property
-    def subminor(self):
-        return self.__subminor
+  @property
+  def subminor(self):
+    return self.__subminor
 
-    def __str__(self):
-        if self.__major is not None:
-            if self.__minor is not None:
-                if self.__subminor is not None:
-                    return '%s.%s.%s' % (self.__major, self.__minor,
-                                         self.__subminor)
-                else:
-                    return '%s.%s' % (self.__major, self.__minor)
-            else:
-                return '%s' % (self.__major)
-        else:
-            return 'any version'
-
-    def __repr__(self):
+  def __str__(self):
       if self.__major is not None:
-        if self.__minor is not None:
-          if self.__subminor is not None:
-            return 'Version(%s, %s, %s)' % (self.__major,
-                                            self.__minor,
-                                            self.__subminor)
+          if self.__minor is not None:
+              if self.__subminor is not None:
+                  return '%s.%s.%s' % (self.__major, self.__minor,
+                                       self.__subminor)
+              else:
+                  return '%s.%s' % (self.__major, self.__minor)
           else:
-            return 'Version(%s, %s)' % (self.__major, self.__minor)
-        else:
-          return 'Version(%s)' % (self.__major)
+              return '%s' % (self.__major)
       else:
-        return 'Version()'
+          return 'any version'
 
-
-    def __contains__(self, other):
-      """Whether a version includes another.
-
-      >>> Version(1, 2, 3) in Version(1, 2, 3)
-      True
-      >>> Version(1, 2, 2) in Version(1, 2, 3)
-      False
-      >>> Version(1, 2, 4) in Version(1, 2, 3)
-      False
-      >>> Version(1, 2) in Version(1, 2, 3)
-      False
-      >>> Version(1, 2, 3) in Version(1, 2)
-      True
-      >>> Version(1, 3) in Version(1, Range(2, 4))
-      True
-      >>> Version(1, 2, 3) in Version()
-      True
-      """
-      if self.__major is not None:
-        if other.__major is None or \
-           not other.__major in self.__major:
-          return False
-        if self.__minor is not None:
-          if other.__minor is None or \
-             not other.__minor in self.__minor:
-            return False
-          if self.__subminor is not None:
-            if other.__subminor is None or \
-               not other.__subminor in self.__subminor:
-              return False
-      return True
-
-    def __ge__(self, rhs):
-        """Whether a version is greater than another.
-
-        >>> Version(1, 2, 3) >= Version(1, 2, 3)
-        True
-        >>> Version(1, 2, 4) >= Version(1, 2, 3)
-        True
-        >>> Version(1, 3, 2) >= Version(1, 2, 3)
-        True
-        >>> Version(2, 0, 0) >= Version(1, 10, 23)
-        True
-        >>> Version(1, 2, 3) >= Version(1, 2, 4)
-        False
-        >>> Version(1, 2, 3) >= Version(1, 3, 2)
-        False
-        """
-        assert self.__major is not None and rhs.__major is not None
-        if self.__major == rhs.__major:
-            minor = self.__minor or 0
-            rhs_minor = rhs.__minor or 0
-            if minor == rhs_minor:
-                subminor = self.__subminor or 0
-                rhs_subminor = rhs.__subminor or 0
-                return subminor >= rhs_subminor
-            else:
-                return minor > rhs_minor
+  def __repr__(self):
+    if self.__major is not None:
+      if self.__minor is not None:
+        if self.__subminor is not None:
+          return 'Version(%s, %s, %s)' % (self.__major,
+                                          self.__minor,
+                                          self.__subminor)
         else:
-            return self.__major > rhs.__major
+          return 'Version(%s, %s)' % (self.__major, self.__minor)
+      else:
+        return 'Version(%s)' % (self.__major)
+    else:
+      return 'Version()'
 
-    def __eq__(self, rhs):
-      return all(getattr(self, a) == getattr(rhs, a) for a in ('major', 'minor', 'subminor'))
 
-    def __hash__(self):
-      return hash(str(self))
+  def __contains__(self, other):
+    """Whether a version includes another.
+
+    >>> Version(1, 2, 3) in Version(1, 2, 3)
+    True
+    >>> Version(1, 2, 2) in Version(1, 2, 3)
+    False
+    >>> Version(1, 2, 4) in Version(1, 2, 3)
+    False
+    >>> Version(1, 2) in Version(1, 2, 3)
+    False
+    >>> Version(1, 2, 3) in Version(1, 2)
+    True
+    >>> Version(1, 3) in Version(1, Range(2, 4))
+    True
+    >>> Version(1, 2, 3) in Version()
+    True
+    """
+    if self.__major is not None:
+      if other.__major is None or \
+         not other.__major in self.__major:
+        return False
+      if self.__minor is not None:
+        if other.__minor is None or \
+           not other.__minor in self.__minor:
+          return False
+        if self.__subminor is not None:
+          if other.__subminor is None or \
+             not other.__subminor in self.__subminor:
+            return False
+    return True
+
+  def __ge__(self, rhs):
+    """Whether a version is greater than another.
+
+    >>> Version(1, 2, 3) >= Version(1, 2, 3)
+    True
+    >>> Version(1, 2, 4) >= Version(1, 2, 3)
+    True
+    >>> Version(1, 3, 2) >= Version(1, 2, 3)
+    True
+    >>> Version(2, 0, 0) >= Version(1, 10, 23)
+    True
+    >>> Version(1, 2, 3) >= Version(1, 2, 4)
+    False
+    >>> Version(1, 2, 3) >= Version(1, 3, 2)
+    False
+    """
+    assert self.__major is not None and rhs.__major is not None
+    if self.__major == rhs.__major:
+      minor = self.__minor or 0
+      rhs_minor = rhs.__minor or 0
+      if minor == rhs_minor:
+        subminor = self.__subminor or 0
+        rhs_subminor = rhs.__subminor or 0
+        return subminor >= rhs_subminor
+      else:
+        return minor > rhs_minor
+    else:
+      return self.__major > rhs.__major
+
+  def __eq__(self, rhs):
+    return all(getattr(self, a) == getattr(rhs, a) for a in ('major', 'minor', 'subminor'))
+
+  def __hash__(self):
+    return hash(str(self))
 
 class Runner(Builder):
 

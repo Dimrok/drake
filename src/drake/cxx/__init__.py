@@ -32,517 +32,510 @@ def chain(*collections):
 
 class Config:
 
-    class Library:
+  class Library:
 
-        def __init__(self, name, static = False):
-            self.name = name
-            self.static = static
+    def __init__(self, name, static = False):
+      self.name = name
+      self.static = static
 
-        def __hash__(self):
-            return hash(self.name)
-
-        def __repr__(self):
-            return 'Library(%r, %r)' % (self.name, self.static)
-
-    def __init__(self, model = None):
-        if model is None:
-            self.__debug = False
-            self.__export_dynamic = None
-            self._includes = {}
-            self.__local_includes = sched.OrderedSet()
-            self.__optimization = 1
-            self.__system_includes = sched.OrderedSet()
-            self.__lib_paths = sched.OrderedSet()
-            self.__libs = sched.OrderedSet()
-            self.__libraries = sched.OrderedSet()
-            self.flags = []
-            self.ldflags = []
-            self._framework = sched.OrderedSet()
-            self.__defines = collections.OrderedDict()
-            self.__standard = None
-            self.__rpath = []
-            self.__warnings = Config.Warnings()
-            self.__use_local_libcxx = None
-            self.__visibility_hidden = None
-            self.__whole_archive = False
-        else:
-            self.__debug = model.__debug
-            self.__export_dynamic = model.__export_dynamic
-            self._includes = dict(model._includes)
-            self.__local_includes = sched.OrderedSet(model.__local_includes)
-            self.__optimization = model.__optimization
-            self.__system_includes = sched.OrderedSet(model.__system_includes)
-            self.__lib_paths = sched.OrderedSet(model.__lib_paths)
-            self.__libs = sched.OrderedSet(model.__libs)
-            self.__libraries = sched.OrderedSet(model.__libraries)
-            self.flags = model.flags[:]
-            self.ldflags = model.ldflags[:]
-            self._framework = sched.OrderedSet(model._framework)
-            self.__defines = collections.OrderedDict(model.__defines)
-            self.__standard = model.__standard
-            self.__rpath = model.__rpath[:]
-            self.__warnings = Config.Warnings(model.__warnings)
-            self.__use_local_libcxx = model.__use_local_libcxx
-            self.__visibility_hidden = model.__visibility_hidden
-            self.__whole_archive = model.__whole_archive
-
-    class Warnings:
-
-      '''Warnings let you control compiler warnings.
-
-      True forces a warning, False disables it and Warnings.Error makes it an
-      error.
-
-      >>> cfg = drake.cxx.Config()
-      >>> cfg.warnings.mismatched_tags is None
-      True
-      >>> cfg.warnings.mismatched_tags = True
-      >>> cfg.warnings.mismatched_tags is True
-      True
-      >>> cfg.warnings.mismatched_tags = False
-      >>> cfg.warnings.mismatched_tags is False
-      True
-      >>> cfg.warnings.mismatched_tags = drake.cxx.Config.Warnings.Error
-      >>> cfg.warnings.mismatched_tags is drake.cxx.Config.Warnings.Error
-      True
-      '''
-
-      Error = object()
-
-      def __init__(self, model = None):
-        if model is None:
-          self.__default = True
-          self.__warnings = collections.OrderedDict()
-        else:
-          self.__default = model.__default
-          self.__warnings = collections.OrderedDict(model.__warnings)
-
-      known_warnings = [
-        'address',
-        'aggregate_return',
-        'array_bounds',
-        'cast_align',
-        'cast_qual',
-        'char_subscripts',
-        'clobbered',
-        'comment',
-        'conversion',
-        'coverage_mismatch',
-        'cxx11_compat',
-        'cxx_compat',
-        'delete_non_virtual_dtor',
-        'disabled_optimization',
-        'double_promotion',
-        'empty_body',
-        'enum_compare',
-        'fatal_errors',
-        'float_equal',
-        'format',
-        'format_nonliteral',
-        'format_security',
-        'format_y2k',
-        'ignored_qualifiers',
-        'implicit',
-        'implicit_function_declaration',
-        'implicit_int',
-        'init_self',
-        'inline',
-        'invalid_pch',
-        'jump_misses_init',
-        'logical_op',
-        'long_long',
-        'main',
-        'maybe_uninitialized',
-        'misleading_indentation',
-        'mismatched_tags',
-        'missing_braces',
-        'missing_declarations',
-        'missing_field_initializers',
-        'missing_format_attribute',
-        'missing_include_dirs',
-        'no_attributes',
-        'no_builtin_macro_redefined',
-        'no_cpp',
-        'no_deprecated',
-        'no_deprecated_declarations',
-        'no_div_by_zero',
-        'no_endif_labels',
-        'no_format_contains_nul',
-        'no_format_extra_args',
-        'no_free_nonheap_object',
-        'no_int_to_pointer_cast',
-        'no_invalid_offsetof',
-        'no_mudflap',
-        'no_multichar',
-        'no_overflow',
-        'no_pedantic_ms_format',
-        'no_pointer_to_int_cast',
-        'no_poison_system_directories',
-        'no_pragmas',
-        'no_unused_result',
-        'nonnull',
-        'overlength_strings',
-        'overloaded_virtual',
-        'packed',
-        'packed_bitfield_compat',
-        'padded',
-        'parentheses',
-        'pedantic_ms_format',
-        'pointer_arith',
-        'redundant_decls',
-        'return_type',
-        'sequence_point',
-        'shadow',
-        'sign_compare',
-        'sign_conversion',
-        'stack_protector',
-        'strict_aliasing',
-        'strict_overflow',
-        'switch',
-        'switch_default',
-        'switch_enum',
-        'sync_nand',
-        'system_headers',
-        'trampolines',
-        'trigraphs',
-        'type_limits',
-        'undef',
-        'uninitialized',
-        'unknown_pragmas',
-        'unsafe_loop_optimizations',
-        'unsuffixed_float_constants',
-        'unused',
-        'unused_but_set_parameter',
-        'unused_but_set_variable',
-        'unused_function',
-        'unused_label',
-        'unused_local_typedefs',
-        'unused_parameter',
-        'unused_value',
-        'unused_variable',
-        'variadic_macros',
-        'vector_operation_performance',
-        'vla',
-        'volatile_register_var',
-        'write_strings',
-        'zero_as_null_pointer_constant',
-      ]
-
-      def __name(self, name):
-        if name not in drake.cxx.Config.Warnings.known_warnings:
-          raise Exception('unknown warning: %s' % name)
-        return name.replace('_', '-')
-
-      def __setattr__(self, name, value):
-        try:
-          self.__warnings[self.__name(name)] = value
-        except:
-          return super().__setattr__(name, value)
-
-      def __getattribute__(self, name):
-        try:
-          wname = super().__getattribute__('_Warnings__name')(name)
-          return super().__getattribute__('_Warnings__warnings')[wname]
-        except KeyError:
-          return None
-        except:
-          return super().__getattribute__(name)
-
-      def __bool__(self):
-        return self.__default
-
-      def __iter__(self):
-        for warning, enable in self.__warnings.items():
-          yield (warning, enable)
-
-    def enable_debug_symbols(self, val = True):
-        self.__debug = val
-
-    def enable_optimization(self, val = True):
-        if val is True:
-            self.__optimization = 1
-        elif val is False:
-            self.__optimization = 0
-        else:
-            self.__optimization = val
-
-    def define(self, name, value = None):
-
-        self.__defines[name] = value
-
-    def defines(self):
-        return self.__defines
-
-    def flag(self, f):
-        self.flags.append(f)
-
-    def ldflag(self, f):
-      self.ldflags.append(f)
-
-    def framework_add(self, name):
-        self._framework.add(name)
-
-    def frameworks(self):
-        return self._framework
-
-    def add_local_include_path(self, path):
-      path = drake.Drake.current.prefix / path
-      path = path.canonize()
-      self.__local_includes.add(path)
-      self._includes[path] = None
-
-    def add_system_include_path(self, path):
-      path = Path(path)
-      # Never include those.
-      # FIXME: Unix only
-      if path not in [Path('/include'), Path('/usr/include')]:
-        if not path.absolute():
-          path = drake.path_build() / path
-        path = path.canonize()
-        self.__system_includes.add(path)
-        self._includes[path] = None
-
-    def include_path(self):
-        return list(self._includes)
-
-    @property
-    def local_include_path(self):
-        return list(self.__local_includes)
-
-    @property
-    def system_include_path(self):
-        return list(self.__system_includes)
-
-
-    @property
-    def library_path(self):
-        return iter(self.__lib_paths)
-
-
-    @property
-    def whole_archive(self):
-        return self.__whole_archive
-
-
-    def use_whole_archive(self):
-        self.__whole_archive = True
-
-
-    def lib_path(self, path):
-        if path == Path('/lib') or path == Path('/usr/lib'):
-            return
-        p = Path(path)
-        # if not p.absolute():
-        #     p = drake.path_source() / drake.Drake.current.prefix / p
-        if not p.absolute():
-            p = drake.Drake.current.prefix / p
-        self.__lib_paths.add(p)
-
-
-    def lib_path_runtime(self, path):
-        self.__rpath.append(drake.Path(path))
-
-
-    def lib(self, lib, static = False):
-      if lib in self.__libs:
-        if self.__libs[lib].static != static:
-          raise Exception('library %s dynamic versus static '
-                          'linkage conflict' % lib)
-      else:
-        self.__libs.add(Config.Library(lib, static))
-
-
-    def library_add(self, library):
-      if not isinstance(library, drake.BaseNode):
-        library = drake.node(drake.Path(library))
-      self.__libraries.add(library)
-
-    def __add__(self, rhs):
-        """Combine two C++ configurations.
-
-        Defines are merged:
-
-        >>> cfg1 = drake.cxx.Config()
-        >>> cfg1.define('A', 0)
-        >>> cfg2 = drake.cxx.Config()
-        >>> cfg2.define('B', 1)
-        >>> sum = cfg1 + cfg2
-        >>> sum.defines()['A']
-        0
-        >>> sum.defines()['B']
-        1
-
-        Defining twice to the same value is okay:
-
-        >>> cfg2.define('A', 0)
-        >>> sum = cfg1 + cfg2
-        >>> sum.defines()['A']
-        0
-
-        A different value is not:
-
-        >>> cfg1.define('B', 0)
-        >>> cfg1 + cfg2
-        Traceback (most recent call last):
-            ...
-        Exception: redefinition of B from 0 to 1
-
-        Likewise, warnings are merged:
-
-        >>> cfg1 = drake.cxx.Config()
-        >>> cfg1.warnings.parentheses = False
-        >>> cfg2 = drake.cxx.Config()
-        >>> cfg2.warnings.return_type = True
-        >>> sum = cfg1 + cfg2
-        >>> sum.warnings.parentheses
-        False
-        >>> sum.warnings.return_type
-        True
-        >>> cfg1.warnings.return_type = False
-        >>> cfg1 + cfg2
-        Traceback (most recent call last):
-        ...
-        Exception: incompatible C++ configuration for warning 'return-type'
-        """
-        def merge(name, l, r):
-          if l is None:
-            return r
-          elif r is None:
-            return l
-          else:
-            if l is r:
-              return l
-            else:
-              raise Exception('incompatible C++ configuration '
-                              'for %s' % name)
-        def merge_bool(attr):
-          mine = getattr(self, attr, None)
-          hers = getattr(rhs, attr, None)
-          return merge('attribute %s'.format(attr), mine, hers)
-
-        res = Config(self)
-        res.__debug = self.__debug or rhs.__debug
-        res.__export_dynamic = merge_bool('export_dynamic')
-        res.__use_local_libcxx = merge_bool('_Config__use_local_libcxx')
-
-        for w in chain(self.__warnings._Warnings__warnings,
-                       rhs.__warnings._Warnings__warnings):
-          res.__warnings._Warnings__warnings[w] = merge(
-            'warning {!r}'.format(w), self.__warnings._Warnings__warnings.get(w), rhs.__warnings._Warnings__warnings.get(w))
-
-        for key, value in rhs.__defines.items():
-          if key in res.__defines:
-            old = res.__defines[key]
-            if old != value:
-              raise Exception('redefinition of %s from %s to %s' % \
-                              (key, old, value))
-          else:
-            res.__defines[key] = value
-        res.__local_includes |= rhs.__local_includes
-        res.__system_includes |= rhs.__system_includes
-        res._includes.update(rhs._includes)
-        res._framework.update(rhs._framework)
-        res.__lib_paths |= rhs.__lib_paths
-        res.__libs |= rhs.__libs
-        res.__libraries |= rhs.__libraries
-        res.flags += rhs.flags
-        res.ldflags += rhs.ldflags
-        std_s = self.__standard
-        std_o = rhs.__standard
-        if std_s is not None and std_o is not None:
-            if std_s is not std_o:
-                raise Exception(
-                    'merging C++ configurations with incompatible '
-                    'standards: %s and %s' % (std_s, std_o))
-        res.__standard = std_s or std_o
-        res.__visibility_hidden = \
-          merge_bool('_Config__visibility_hidden')
-        return res
-
-    class Standard:
-        def __init__(self, name):
-            self.__name = name
-        def __str__(self):
-            return 'C++ %s' % self.__name
-
-    cxx_14 = Standard('14')
-    cxx_11 = Standard('11')
-    cxx_0x = Standard('0x')
-    cxx_98 = Standard('98')
-
-    @property
-    def standard(self):
-        return self.__standard
-
-    @standard.setter
-    def standard(self, value):
-        assert value is None or isinstance(value, Config.Standard)
-        self.__standard = value
-
-    @property
-    def warnings(self):
-        return self.__warnings
-
-    def enable_warnings(self, value):
-        self.__warnings.default = value
-
-    @property
-    def export_dynamic(self):
-        return self.__export_dynamic
-
-    @export_dynamic.setter
-    def export_dynamic(self, val):
-        self.__export_dynamic = bool(val)
-
-    @property
-    def libs(self):
-        return list(self.__libs)
-
-    @property
-    def libs_dynamic(self):
-        return self.__libs_filter(False)
-
-    @property
-    def libs_static(self):
-        return self.__libs_filter(True)
-
-    def __libs_filter(self, f):
-      return list(lib.name for lib in self.__libs if lib.static is f)
-
-    @property
-    def libraries(self):
-      return tuple(self.__libraries)
-
-    @property
-    def use_local_libcxx(self):
-        return bool(self.__use_local_libcxx)
-
-    @use_local_libcxx.setter
-    def use_local_libcxx(self, val):
-        self.__use_local_libcxx = bool(val)
-
-    @property
-    def visibility_hidden(self):
-      return self.__visibility_hidden
-
-    @visibility_hidden.setter
-    def visibility_hidden(self, value : bool):
-      self.__visibility_hidden = bool(value)
+    def __hash__(self):
+      return hash(self.name)
 
     def __repr__(self):
-      content = {}
-      if self._includes:
-        content['includes'] = self._includes.keys()
-      if self.__defines:
-        content['defines'] = self.__defines.keys()
-      if self.libraries:
-        content['libraries'] = self.libraries
-      if self.__lib_paths:
-        content['libraries path'] = self.__lib_paths
-      content_str = map(
-        lambda k: '%s = [%s]' % (k, ', '.join(map(repr, content[k]))),
-        sorted(content.keys()))
-      return 'drake.cxx.Config(%s)' % ', '.join(content_str)
+      return 'Library(%r, %r)' % (self.name, self.static)
+
+  def __init__(self, model = None):
+    if model is None:
+       self.__debug = False
+       self.__export_dynamic = None
+       self._includes = {}
+       self.__local_includes = sched.OrderedSet()
+       self.__optimization = 1
+       self.__system_includes = sched.OrderedSet()
+       self.__lib_paths = sched.OrderedSet()
+       self.__libs = sched.OrderedSet()
+       self.__libraries = sched.OrderedSet()
+       self.flags = []
+       self.ldflags = []
+       self._framework = sched.OrderedSet()
+       self.__defines = collections.OrderedDict()
+       self.__standard = None
+       self.__rpath = []
+       self.__warnings = Config.Warnings()
+       self.__use_local_libcxx = None
+       self.__visibility_hidden = None
+       self.__whole_archive = False
+    else:
+       self.__debug = model.__debug
+       self.__export_dynamic = model.__export_dynamic
+       self._includes = dict(model._includes)
+       self.__local_includes = sched.OrderedSet(model.__local_includes)
+       self.__optimization = model.__optimization
+       self.__system_includes = sched.OrderedSet(model.__system_includes)
+       self.__lib_paths = sched.OrderedSet(model.__lib_paths)
+       self.__libs = sched.OrderedSet(model.__libs)
+       self.__libraries = sched.OrderedSet(model.__libraries)
+       self.flags = model.flags[:]
+       self.ldflags = model.ldflags[:]
+       self._framework = sched.OrderedSet(model._framework)
+       self.__defines = collections.OrderedDict(model.__defines)
+       self.__standard = model.__standard
+       self.__rpath = model.__rpath[:]
+       self.__warnings = Config.Warnings(model.__warnings)
+       self.__use_local_libcxx = model.__use_local_libcxx
+       self.__visibility_hidden = model.__visibility_hidden
+       self.__whole_archive = model.__whole_archive
+
+  class Warnings:
+
+    '''Warnings let you control compiler warnings.
+
+    True forces a warning, False disables it and Warnings.Error makes it an
+    error.
+
+    >>> cfg = drake.cxx.Config()
+    >>> cfg.warnings.mismatched_tags is None
+    True
+    >>> cfg.warnings.mismatched_tags = True
+    >>> cfg.warnings.mismatched_tags is True
+    True
+    >>> cfg.warnings.mismatched_tags = False
+    >>> cfg.warnings.mismatched_tags is False
+    True
+    >>> cfg.warnings.mismatched_tags = drake.cxx.Config.Warnings.Error
+    >>> cfg.warnings.mismatched_tags is drake.cxx.Config.Warnings.Error
+    True
+    '''
+
+    Error = object()
+
+    def __init__(self, model = None):
+      if model is None:
+        self.__default = True
+        self.__warnings = collections.OrderedDict()
+      else:
+        self.__default = model.__default
+        self.__warnings = collections.OrderedDict(model.__warnings)
+
+    known_warnings = [
+      'address',
+      'aggregate_return',
+      'array_bounds',
+      'cast_align',
+      'cast_qual',
+      'char_subscripts',
+      'clobbered',
+      'comment',
+      'conversion',
+      'coverage_mismatch',
+      'cxx11_compat',
+      'cxx_compat',
+      'delete_non_virtual_dtor',
+      'disabled_optimization',
+      'double_promotion',
+      'empty_body',
+      'enum_compare',
+      'fatal_errors',
+      'float_equal',
+      'format',
+      'format_nonliteral',
+      'format_security',
+      'format_y2k',
+      'ignored_qualifiers',
+      'implicit',
+      'implicit_function_declaration',
+      'implicit_int',
+      'init_self',
+      'inline',
+      'invalid_pch',
+      'jump_misses_init',
+      'logical_op',
+      'long_long',
+      'main',
+      'maybe_uninitialized',
+      'misleading_indentation',
+      'mismatched_tags',
+      'missing_braces',
+      'missing_declarations',
+      'missing_field_initializers',
+      'missing_format_attribute',
+      'missing_include_dirs',
+      'no_attributes',
+      'no_builtin_macro_redefined',
+      'no_cpp',
+      'no_deprecated',
+      'no_deprecated_declarations',
+      'no_div_by_zero',
+      'no_endif_labels',
+      'no_format_contains_nul',
+      'no_format_extra_args',
+      'no_free_nonheap_object',
+      'no_int_to_pointer_cast',
+      'no_invalid_offsetof',
+      'no_mudflap',
+      'no_multichar',
+      'no_overflow',
+      'no_pedantic_ms_format',
+      'no_pointer_to_int_cast',
+      'no_poison_system_directories',
+      'no_pragmas',
+      'no_unused_result',
+      'nonnull',
+      'overlength_strings',
+      'overloaded_virtual',
+      'packed',
+      'packed_bitfield_compat',
+      'padded',
+      'parentheses',
+      'pedantic_ms_format',
+      'pointer_arith',
+      'redundant_decls',
+      'return_type',
+      'sequence_point',
+      'shadow',
+      'sign_compare',
+      'sign_conversion',
+      'stack_protector',
+      'strict_aliasing',
+      'strict_overflow',
+      'switch',
+      'switch_default',
+      'switch_enum',
+      'sync_nand',
+      'system_headers',
+      'trampolines',
+      'trigraphs',
+      'type_limits',
+      'undef',
+      'uninitialized',
+      'unknown_pragmas',
+      'unsafe_loop_optimizations',
+      'unsuffixed_float_constants',
+      'unused',
+      'unused_but_set_parameter',
+      'unused_but_set_variable',
+      'unused_function',
+      'unused_label',
+      'unused_local_typedefs',
+      'unused_parameter',
+      'unused_value',
+      'unused_variable',
+      'variadic_macros',
+      'vector_operation_performance',
+      'vla',
+      'volatile_register_var',
+      'write_strings',
+      'zero_as_null_pointer_constant',
+    ]
+
+    def __name(self, name):
+      if name not in drake.cxx.Config.Warnings.known_warnings:
+        raise Exception('unknown warning: %s' % name)
+      return name.replace('_', '-')
+
+    def __setattr__(self, name, value):
+      try:
+        self.__warnings[self.__name(name)] = value
+      except:
+        return super().__setattr__(name, value)
+
+    def __getattribute__(self, name):
+      try:
+        wname = super().__getattribute__('_Warnings__name')(name)
+        return super().__getattribute__('_Warnings__warnings')[wname]
+      except KeyError:
+        return None
+      except:
+        return super().__getattribute__(name)
+
+    def __bool__(self):
+      return self.__default
+
+    def __iter__(self):
+      for warning, enable in self.__warnings.items():
+        yield (warning, enable)
+
+  def enable_debug_symbols(self, val = True):
+    self.__debug = val
+
+  def enable_optimization(self, val = True):
+    if val is True:
+      self.__optimization = 1
+    elif val is False:
+      self.__optimization = 0
+    else:
+      self.__optimization = val
+
+  def define(self, name, value = None):
+    self.__defines[name] = value
+
+  def defines(self):
+    return self.__defines
+
+  def flag(self, f):
+    self.flags.append(f)
+
+  def ldflag(self, f):
+    self.ldflags.append(f)
+
+  def framework_add(self, name):
+    self._framework.add(name)
+
+  def frameworks(self):
+    return self._framework
+
+  def add_local_include_path(self, path):
+    path = drake.Drake.current.prefix / path
+    path = path.canonize()
+    self.__local_includes.add(path)
+    self._includes[path] = None
+
+  def add_system_include_path(self, path):
+    path = Path(path)
+    # Never include those.
+    # FIXME: Unix only
+    if path not in [Path('/include'), Path('/usr/include')]:
+      if not path.absolute():
+        path = drake.path_build() / path
+      path = path.canonize()
+      self.__system_includes.add(path)
+      self._includes[path] = None
+
+  def include_path(self):
+    return list(self._includes)
+
+  @property
+  def local_include_path(self):
+    return list(self.__local_includes)
+
+  @property
+  def system_include_path(self):
+    return list(self.__system_includes)
+
+  @property
+  def library_path(self):
+    return iter(self.__lib_paths)
+
+  @property
+  def whole_archive(self):
+    return self.__whole_archive
+
+  def use_whole_archive(self):
+    self.__whole_archive = True
+
+  def lib_path(self, path):
+    if path == Path('/lib') or path == Path('/usr/lib'):
+      return
+    p = Path(path)
+    # if not p.absolute():
+    #     p = drake.path_source() / drake.Drake.current.prefix / p
+    if not p.absolute():
+      p = drake.Drake.current.prefix / p
+    self.__lib_paths.add(p)
+
+  def lib_path_runtime(self, path):
+    self.__rpath.append(drake.Path(path))
+
+  def lib(self, lib, static = False):
+    if lib in self.__libs:
+      if self.__libs[lib].static != static:
+        raise Exception('library %s dynamic versus static '
+                        'linkage conflict' % lib)
+    else:
+      self.__libs.add(Config.Library(lib, static))
+
+
+  def library_add(self, library):
+    if not isinstance(library, drake.BaseNode):
+      library = drake.node(drake.Path(library))
+    self.__libraries.add(library)
+
+  def __add__(self, rhs):
+    """Combine two C++ configurations.
+
+    Defines are merged:
+
+    >>> cfg1 = drake.cxx.Config()
+    >>> cfg1.define('A', 0)
+    >>> cfg2 = drake.cxx.Config()
+    >>> cfg2.define('B', 1)
+    >>> sum = cfg1 + cfg2
+    >>> sum.defines()['A']
+    0
+    >>> sum.defines()['B']
+    1
+
+    Defining twice to the same value is okay:
+
+    >>> cfg2.define('A', 0)
+    >>> sum = cfg1 + cfg2
+    >>> sum.defines()['A']
+    0
+
+    A different value is not:
+
+    >>> cfg1.define('B', 0)
+    >>> cfg1 + cfg2
+    Traceback (most recent call last):
+        ...
+    Exception: redefinition of B from 0 to 1
+
+    Likewise, warnings are merged:
+
+    >>> cfg1 = drake.cxx.Config()
+    >>> cfg1.warnings.parentheses = False
+    >>> cfg2 = drake.cxx.Config()
+    >>> cfg2.warnings.return_type = True
+    >>> sum = cfg1 + cfg2
+    >>> sum.warnings.parentheses
+    False
+    >>> sum.warnings.return_type
+    True
+    >>> cfg1.warnings.return_type = False
+    >>> cfg1 + cfg2
+    Traceback (most recent call last):
+    ...
+    Exception: incompatible C++ configuration for warning 'return-type'
+    """
+    def merge(name, l, r):
+      if l is None:
+        return r
+      elif r is None:
+        return l
+      else:
+        if l is r:
+          return l
+        else:
+          raise Exception('incompatible C++ configuration '
+                          'for %s' % name)
+    def merge_bool(attr):
+      mine = getattr(self, attr, None)
+      hers = getattr(rhs, attr, None)
+      return merge('attribute %s'.format(attr), mine, hers)
+
+    res = Config(self)
+    res.__debug = self.__debug or rhs.__debug
+    res.__export_dynamic = merge_bool('export_dynamic')
+    res.__use_local_libcxx = merge_bool('_Config__use_local_libcxx')
+
+    for w in chain(self.__warnings._Warnings__warnings,
+                   rhs.__warnings._Warnings__warnings):
+      res.__warnings._Warnings__warnings[w] = merge(
+        'warning {!r}'.format(w), self.__warnings._Warnings__warnings.get(w), rhs.__warnings._Warnings__warnings.get(w))
+
+    for key, value in rhs.__defines.items():
+      if key in res.__defines:
+        old = res.__defines[key]
+        if old != value:
+          raise Exception('redefinition of %s from %s to %s' % \
+                          (key, old, value))
+      else:
+        res.__defines[key] = value
+    res.__local_includes |= rhs.__local_includes
+    res.__system_includes |= rhs.__system_includes
+    res._includes.update(rhs._includes)
+    res._framework.update(rhs._framework)
+    res.__lib_paths |= rhs.__lib_paths
+    res.__libs |= rhs.__libs
+    res.__libraries |= rhs.__libraries
+    res.flags += rhs.flags
+    res.ldflags += rhs.ldflags
+    std_s = self.__standard
+    std_o = rhs.__standard
+    if std_s is not None and std_o is not None:
+      if std_s is not std_o:
+        raise Exception(
+          'merging C++ configurations with incompatible '
+          'standards: %s and %s' % (std_s, std_o))
+    res.__standard = std_s or std_o
+    res.__visibility_hidden = \
+      merge_bool('_Config__visibility_hidden')
+    return res
+
+  class Standard:
+    def __init__(self, name):
+      self.__name = name
+    def __str__(self):
+      return 'C++ %s' % self.__name
+
+  cxx_14 = Standard('14')
+  cxx_11 = Standard('11')
+  cxx_0x = Standard('0x')
+  cxx_98 = Standard('98')
+
+  @property
+  def standard(self):
+    return self.__standard
+
+  @standard.setter
+  def standard(self, value):
+    assert value is None or isinstance(value, Config.Standard)
+    self.__standard = value
+
+  @property
+  def warnings(self):
+    return self.__warnings
+
+  def enable_warnings(self, value):
+    self.__warnings.default = value
+
+  @property
+  def export_dynamic(self):
+    return self.__export_dynamic
+
+  @export_dynamic.setter
+  def export_dynamic(self, val):
+    self.__export_dynamic = bool(val)
+
+  @property
+  def libs(self):
+    return list(self.__libs)
+
+  @property
+  def libs_dynamic(self):
+    return self.__libs_filter(False)
+
+  @property
+  def libs_static(self):
+    return self.__libs_filter(True)
+
+  def __libs_filter(self, f):
+    return list(lib.name for lib in self.__libs if lib.static is f)
+
+  @property
+  def libraries(self):
+    return tuple(self.__libraries)
+
+  @property
+  def use_local_libcxx(self):
+    return bool(self.__use_local_libcxx)
+
+  @use_local_libcxx.setter
+  def use_local_libcxx(self, val):
+    self.__use_local_libcxx = bool(val)
+
+  @property
+  def visibility_hidden(self):
+    return self.__visibility_hidden
+
+  @visibility_hidden.setter
+  def visibility_hidden(self, value : bool):
+    self.__visibility_hidden = bool(value)
+
+  def __repr__(self):
+    content = {}
+    if self._includes:
+      content['includes'] = self._includes.keys()
+    if self.__defines:
+      content['defines'] = self.__defines.keys()
+    if self.libraries:
+      content['libraries'] = self.libraries
+    if self.__lib_paths:
+      content['libraries path'] = self.__lib_paths
+    content_str = map(
+      lambda k: '%s = [%s]' % (k, ', '.join(map(repr, content[k]))),
+      sorted(content.keys()))
+    return 'drake.cxx.Config(%s)' % ', '.join(content_str)
 
 # FIXME: Factor node and builder for executable and staticlib
 
@@ -563,32 +556,32 @@ class Toolkit(metaclass = _ToolkitType):
     return 'compiler-path'
 
   def __init__(self):
-      self.includes = []
-      self._hook_object_deps = []
-      self._hook_bin_deps = []
-      self._hook_bin_src = []
+    self.includes = []
+    self._hook_object_deps = []
+    self._hook_bin_deps = []
+    self._hook_bin_src = []
 
   @classmethod
   def default(self):
-      return GccToolkit()
+    return GccToolkit()
 
   def hook_object_deps_add(self, f):
-      self._hook_object_deps.append(f)
+    self._hook_object_deps.append(f)
 
   def hook_object_deps(self):
-      return self._hook_object_deps
+    return self._hook_object_deps
 
   def hook_bin_deps_add(self, f):
-      self._hook_bin_deps.append(f)
+    self._hook_bin_deps.append(f)
 
   def hook_bin_deps(self):
-      return self._hook_bin_deps
+    return self._hook_bin_deps
 
   def hook_bin_src_add(self, f):
-      self._hook_bin_src.append(f)
+    self._hook_bin_src.append(f)
 
   def hook_bin_src(self):
-      return self._hook_bin_src
+    return self._hook_bin_src
 
 
 class GccToolkit(Toolkit):
@@ -760,70 +753,69 @@ class GccToolkit(Toolkit):
     return stdout.decode("utf-8")
 
   def object_extension(self):
-
-      return 'o'
+    return 'o'
 
   def cppflags(self, cfg):
-      res = []
-      # Make it nicer to the human reader: sort.
-      for name, v in sorted(cfg.defines().items()):
-        res.append('-D%s=%s' % (name, v) if v else ('-D%s' % name))
-      for flag, path in [('-isystem', cfg.system_include_path),
-                         ('-I',       cfg.local_include_path)]:
-        for include in path:
-          # Let's have the source tree have precedence over the build
-          # one.  There are arguments for the converse, but actually
-          # in a good build system it should not matter: we should not
-          # have file appearing in both sides.
-          res += [flag, utils.shell_escape(drake.path_source() / include)]
-          res += [flag, utils.shell_escape(include)]
-      return res
+    res = []
+    # Make it nicer to the human reader: sort.
+    for name, v in sorted(cfg.defines().items()):
+      res.append('-D%s=%s' % (name, v) if v else ('-D%s' % name))
+    for flag, path in [('-isystem', cfg.system_include_path),
+                       ('-I',       cfg.local_include_path)]:
+      for include in path:
+        # Let's have the source tree have precedence over the build
+        # one.  There are arguments for the converse, but actually
+        # in a good build system it should not matter: we should not
+        # have file appearing in both sides.
+        res += [flag, utils.shell_escape(drake.path_source() / include)]
+        res += [flag, utils.shell_escape(include)]
+    return res
 
   def cflags(self, cfg):
-      res = []
-      if cfg._Config__optimization:
-        res.append('-O2')
-      if cfg._Config__debug:
-        res.append('-g')
-      std = cfg._Config__standard
-      if std is None:
-        pass
-      elif std is Config.cxx_98:
-        res.append('-std=c++98')
-      elif std is Config.cxx_0x:
-        res.append('-std=c++0x')
-      elif std is Config.cxx_11:
+    res = []
+    if cfg._Config__optimization:
+      res.append('-O2')
+    if cfg._Config__debug:
+      res.append('-g')
+    std = cfg._Config__standard
+    if std is None:
+      pass
+    elif std is Config.cxx_98:
+      res.append('-std=c++98')
+    elif std is Config.cxx_0x:
+      res.append('-std=c++0x')
+    elif std is Config.cxx_11:
+      res.append('-std=c++11')
+    elif std is Config.cxx_14:
+      if self.__kind is GccToolkit.Kind.gcc \
+         and self.__version[:2] == (4, 8):
+        # GCC 4.8 does not recognize std=c++14, but enables the
+        # features nonetheless with std=c++11
         res.append('-std=c++11')
-      elif std is Config.cxx_14:
-        if self.__kind is GccToolkit.Kind.gcc \
-           and self.__version[:2] == (4, 8):
-          # GCC 4.8 does not recognize std=c++14, but enables the
-          # features nonetheless with std=c++11
-          res.append('-std=c++11')
-        else:
-          res.append('-std=c++14')
       else:
-          raise Exception('Unknown C++ standard: %s' % std)
-      if cfg.warnings:
-          res.append('-Wall')
-      for warning, enable in cfg.warnings:
-        if self.__kind is GccToolkit.Kind.gcc and warning in [
-            'mismatched-tags',
-        ]:
-            continue
-        if enable is None:
-          pass
-        elif enable is Config.Warnings.Error:
-          prefix = 'error='
-        elif not enable:
-          prefix = 'no-'
-        else:
-          prefix = ''
-        res.append('-W%s%s' % (prefix, warning))
-      if cfg.visibility_hidden:
-        res.append('-fvisibility=hidden')
-        res.append('-fvisibility-inlines-hidden')
-      return res
+        res.append('-std=c++14')
+    else:
+        raise Exception('Unknown C++ standard: %s' % std)
+    if cfg.warnings:
+        res.append('-Wall')
+    for warning, enable in cfg.warnings:
+      if self.__kind is GccToolkit.Kind.gcc and warning in [
+          'mismatched-tags',
+      ]:
+          continue
+      if enable is None:
+        pass
+      elif enable is Config.Warnings.Error:
+        prefix = 'error='
+      elif not enable:
+        prefix = 'no-'
+      else:
+        prefix = ''
+      res.append('-W%s%s' % (prefix, warning))
+    if cfg.visibility_hidden:
+      res.append('-fvisibility=hidden')
+      res.append('-fvisibility-inlines-hidden')
+    return res
 
   def ldflags(self, cfg):
     res = []
@@ -922,114 +914,112 @@ class GccToolkit(Toolkit):
     return rpath, rpath_link
 
   def link(self, cfg, objs, exe):
-      cmd = self.command_cxx + cfg.flags + self.ldflags(cfg)
-      for framework in cfg.frameworks():
-          cmd += ['-framework', framework]
-      for path in cfg.library_path:
-          cmd += ['-L', path]
-      rpath, rpath_link = self.__compute_rpaths(exe, cfg, objs)
-      for path in rpath:
-        cmd.append('-Wl,-rpath,%s' % self.rpath(path))
-      for path in rpath_link:
-        cmd.append('-Wl,-rpath-link,%s' % path)
-      if self.os == drake.os.macos:
-          cmd += ['-undefined', 'dynamic_lookup']
-      for obj in (obj for obj in objs if not isinstance(obj, Library)):
-        cmd.append(obj.path())
-      cmd += ['-o', exe.path()]
-      libraries = (obj for obj in objs if isinstance(obj, Library))
-      self.__libraries_flags(cfg, libraries, cmd)
-      if cfg.whole_archive:
-        if self.os is drake.os.macos:
-          cmd.append( '-Wl,-all_load') # close enough
-        else:
-          pre=list()
-          ar=list()
-          post=list()
-          arnames=list()
-          for e in cmd:
-            e = str(e)
-            if e[-2:] == '.a':
-              if e.split('/')[-1] not in arnames:
-                ar.append(e)
-                arnames.append(e.split('/')[-1])
-              else:
-                pass
+    cmd = self.command_cxx + cfg.flags + self.ldflags(cfg)
+    for framework in cfg.frameworks():
+        cmd += ['-framework', framework]
+    for path in cfg.library_path:
+        cmd += ['-L', path]
+    rpath, rpath_link = self.__compute_rpaths(exe, cfg, objs)
+    for path in rpath:
+      cmd.append('-Wl,-rpath,%s' % self.rpath(path))
+    for path in rpath_link:
+      cmd.append('-Wl,-rpath-link,%s' % path)
+    if self.os == drake.os.macos:
+        cmd += ['-undefined', 'dynamic_lookup']
+    for obj in (obj for obj in objs if not isinstance(obj, Library)):
+      cmd.append(obj.path())
+    cmd += ['-o', exe.path()]
+    libraries = (obj for obj in objs if isinstance(obj, Library))
+    self.__libraries_flags(cfg, libraries, cmd)
+    if cfg.whole_archive:
+      if self.os is drake.os.macos:
+        cmd.append( '-Wl,-all_load') # close enough
+      else:
+        pre=list()
+        ar=list()
+        post=list()
+        arnames=list()
+        for e in cmd:
+          e = str(e)
+          if e[-2:] == '.a':
+            if e.split('/')[-1] not in arnames:
+              ar.append(e)
+              arnames.append(e.split('/')[-1])
             else:
-              if len(ar):
-                post.append(e)
-              else:
-                pre.append(e)
-          cmd = pre + ['-Wl,--whole-archive'] + ar + ['-Wl,--no-whole-archive'] + post
-      return cmd
+              pass
+          else:
+            if len(ar):
+              post.append(e)
+            else:
+              pre.append(e)
+        cmd = pre + ['-Wl,--whole-archive'] + ar + ['-Wl,--no-whole-archive'] + post
+    return cmd
 
   def dynlink(self, cfg, objs, exe):
-      cmd = self.command_cxx + cfg.flags + self.ldflags(cfg)
-      for framework in cfg.frameworks():
-          cmd += ['-framework', framework]
-      for path in cfg.library_path:
-          cmd += ['-L', path]
-      rpath, rpath_link = self.__compute_rpaths(exe, cfg, objs)
-      for path in rpath:
-        cmd.append('-Wl,-rpath,%s' % self.rpath(path))
-      if self.os == drake.os.macos:
-        cmd += ['-undefined', 'dynamic_lookup',
-                '-Wl,-install_name,@rpath/%s' % exe.path().basename(),
-                '-Wl,-headerpad_max_install_names']
-      if self.os is drake.os.linux:
-        cmd.append('-Wl,-soname,%s' % exe.name().basename())
-      to_link = []
-      for obj in objs:
-          if isinstance(obj, (StaticLib, DynLib)):
-            to_link.append(obj)
-          else:
-            cmd.append(obj.path())
-      cmd += ['-shared', '-o', exe.path()]
-      self.__libraries_flags(cfg, to_link, cmd)
-      if cfg.whole_archive:
-        if self.os is drake.os.macos:
-          cmd.append('-Wl,-all_load') # close enough
+    cmd = self.command_cxx + cfg.flags + self.ldflags(cfg)
+    for framework in cfg.frameworks():
+        cmd += ['-framework', framework]
+    for path in cfg.library_path:
+        cmd += ['-L', path]
+    rpath, rpath_link = self.__compute_rpaths(exe, cfg, objs)
+    for path in rpath:
+      cmd.append('-Wl,-rpath,%s' % self.rpath(path))
+    if self.os == drake.os.macos:
+      cmd += ['-undefined', 'dynamic_lookup',
+              '-Wl,-install_name,@rpath/%s' % exe.path().basename(),
+              '-Wl,-headerpad_max_install_names']
+    if self.os is drake.os.linux:
+      cmd.append('-Wl,-soname,%s' % exe.name().basename())
+    to_link = []
+    for obj in objs:
+        if isinstance(obj, (StaticLib, DynLib)):
+          to_link.append(obj)
         else:
-          pre=list()
-          ar=list()
-          post=list()
-          arnames=list()
-          for e in cmd:
-            e = str(e)
-            if e[-2:] == '.a':
-              if e.split('/')[-1] not in arnames:
-                ar.append(e)
-                arnames.append(e.split('/')[-1])
-              else:
-                pass
+          cmd.append(obj.path())
+    cmd += ['-shared', '-o', exe.path()]
+    self.__libraries_flags(cfg, to_link, cmd)
+    if cfg.whole_archive:
+      if self.os is drake.os.macos:
+        cmd.append('-Wl,-all_load') # close enough
+      else:
+        pre=list()
+        ar=list()
+        post=list()
+        arnames=list()
+        for e in cmd:
+          e = str(e)
+          if e[-2:] == '.a':
+            if e.split('/')[-1] not in arnames:
+              ar.append(e)
+              arnames.append(e.split('/')[-1])
             else:
-              if len(ar):
-                post.append(e)
-              else:
-                pre.append(e)
-          cmd = pre
-          cmd += ['-Wl,--whole-archive'] + ar + ['-Wl,--no-whole-archive'] + post
-      if self.os is drake.os.windows:
-        cmd.append('-Wl,--export-all-symbols')
-      return cmd
+              pass
+          else:
+            if len(ar):
+              post.append(e)
+            else:
+              pre.append(e)
+        cmd = pre
+        cmd += ['-Wl,--whole-archive'] + ar + ['-Wl,--no-whole-archive'] + post
+    if self.os is drake.os.windows:
+      cmd.append('-Wl,--export-all-symbols')
+    return cmd
 
   def libname_static(self, cfg, path):
-
-      path = Path(path)
-      return path.dirname() / ('lib%s.a' % str(path.basename()))
+    path = Path(path)
+    return path.dirname() / ('lib%s.a' % str(path.basename()))
 
   def libname_dyn(self, path, cfg = None, prefix = 'lib'):
-
-      path = Path(path)
-      if self.os in [drake.os.linux, drake.os.android]:
-        ext = 'so'
-      elif self.os in (drake.os.macos, drake.os.ios, drake.os.ios_simulator):
-        ext = 'dylib'
-      elif self.os == drake.os.windows:
-        ext = 'dll'
-      else:
-        assert False
-      return path.dirname() / ('%s%s.%s' % (prefix, path.basename(), ext))
+    path = Path(path)
+    if self.os in [drake.os.linux, drake.os.android]:
+      ext = 'so'
+    elif self.os in (drake.os.macos, drake.os.ios, drake.os.ios_simulator):
+      ext = 'dylib'
+    elif self.os == drake.os.windows:
+      ext = 'dll'
+    else:
+      assert False
+    return path.dirname() / ('%s%s.%s' % (prefix, path.basename(), ext))
 
   def libname_module(self, cfg, path):
     if self.os == drake.os.windows:
@@ -1039,10 +1029,10 @@ class GccToolkit(Toolkit):
     return Path(path).with_extension(ext)
 
   def exename(self, cfg, path):
-      path = Path(path)
-      if self.os == drake.os.windows:
-        path = path.with_extension('exe')
-      return path
+    path = Path(path)
+    if self.os == drake.os.windows:
+      path = path.with_extension('exe')
+    return path
 
   def rpath_set_command(self, binary, path):
     path = self.rpath(path)
@@ -1203,10 +1193,10 @@ class VisualToolkit(Toolkit):
       os.remove(path)
 
   def warning_disable(self, n):
-      self.flags.append('/wd%s' % n)
+    self.flags.append('/wd%s' % n)
 
   def object_extension(self):
-      return 'obj'
+    return 'obj'
 
   def cppflags(self, cfg):
     flags = []
@@ -1223,19 +1213,18 @@ class VisualToolkit(Toolkit):
     return flags
 
   def compile(self, cfg, src, obj, c = False, pic = False):
-      cmd = ['cl.exe', '/MT', '/TP', '/nologo', '/DWIN32']
-      cmd += self.flags
-      cmd += cfg.flags
-      cmd.append('/EHsc')
-      cmd += self.cppflags(cfg)
-      cmd.append('/Fo%s' % obj)
-      cmd.append('/c')
-      cmd.append(str(src))
-      return cmd
+    cmd = ['cl.exe', '/MT', '/TP', '/nologo', '/DWIN32']
+    cmd += self.flags
+    cmd += cfg.flags
+    cmd.append('/EHsc')
+    cmd += self.cppflags(cfg)
+    cmd.append('/Fo%s' % obj)
+    cmd.append('/c')
+    cmd.append(str(src))
+    return cmd
 
   def archive(self, cfg, objs, lib):
-      return 'lib /nologo /MT %s /OUT:%s' % \
-          (' '.join(map(str, objs)), lib)
+    return 'lib /nologo /MT %s /OUT:%s' % (' '.join(map(str, objs)), lib)
 
   def link(self, cfg, objs, exe):
     # /ENTRY:main
@@ -1255,28 +1244,28 @@ class VisualToolkit(Toolkit):
             ''.join(map(lambda d: ' %s.lib' % d, cfg.__libs)))
 
   def libname_static(self, cfg, path):
-      path = Path(path)
-      return path.dirname() / ('%s.lib' % str(path.basename()))
+    path = Path(path)
+    return path.dirname() / ('%s.lib' % str(path.basename()))
 
   def libname_dyn(self, path, cfg = None):
-      path = Path(path)
-      return path.dirname() / ('%s.dll' % str(path.basename()))
+    path = Path(path)
+    return path.dirname() / ('%s.dll' % str(path.basename()))
 
   def libname_module(self, cfg, path):
-      path = Path(path)
-      return path.dirname() / ('%s.dll' % str(path.basename()))
+    path = Path(path)
+    return path.dirname() / ('%s.dll' % str(path.basename()))
 
   def exename(self, cfg, path):
-      res = Path(path)
-      res.extension = 'exe'
-      return res
+    res = Path(path)
+    res.extension = 'exe'
+    return res
 
   @property
   def version(self):
     return self.__version
 
 def deps_handler(builder, path, t, data):
-    return node(path, t)
+  return node(path, t)
 
 profile_deps = drake.Profile('C++ dependencies exploration')
 
@@ -1437,7 +1426,6 @@ def _mkdeps(explored_node, search, marks, cycles_map, owner_map, user = True):
 class _Compiler(Builder):
 
   def __init__(self, src, obj, tk, cfg):
-
     self.src = src
     self.obj = obj
     self.config = cfg
@@ -1654,13 +1642,11 @@ class StaticLibLinker(Builder):
 
 class Source(Node):
 
-    def __init__(self, path):
+  def __init__(self, path):
+    Node.__init__(self, path)
 
-        Node.__init__(self, path)
-
-    def clone(self, path):
-
-        return Source(path)
+  def clone(self, path):
+    return Source(path)
 
 Node.extensions['c'] = Source
 Node.extensions['cc'] = Source
@@ -1670,9 +1656,8 @@ Node.extensions['S'] = Source
 
 class Header(Node):
 
-    def __init__(self, path):
-
-        Node.__init__(self, path)
+  def __init__(self, path):
+    Node.__init__(self, path)
 
 Node.extensions['h'] = Header
 Node.extensions['hh'] = Header
@@ -1682,48 +1667,42 @@ Node.extensions['hxx'] = Header
 
 class ResourceFile(Node):
 
-    def __init__(self, path):
+  def __init__(self, path):
+    Node.__init__(self, path)
 
-        Node.__init__(self, path)
-
-    def clone(self, path):
-
-        return ResourceFile(path)
+  def clone(self, path):
+    return ResourceFile(path)
 
 Node.extensions['rc'] = ResourceFile
 
 class Object(Node):
 
-    def __init__(self, *args, **kwargs):
+  def __init__(self, *args, **kwargs):
+    if len(args) + len(kwargs) == 1:
+      self.__init_node__(*args, **kwargs)
+    else:
+      self.__init_object__(*args, **kwargs)
 
-        if len(args) + len(kwargs) == 1:
-            self.__init_node__(*args, **kwargs)
-        else:
-            self.__init_object__(*args, **kwargs)
+  def __init_node__(self, path):
+    Node.__init__(self, path)
 
-    def __init_node__(self, path):
+  def __init_object__(self, source, tk, cfg):
+    self.source = source
+    self.toolkit = tk
+    self.cfg = cfg
+    path = source.name_relative
+    c = path.extension == 'c'
+    path = path.without_last_extension()
+    if len(path.extension):
+      path = path.with_extension('%s.%s' % (path.extension, tk.object_extension()))
+    else:
+      path = path.with_extension(tk.object_extension())
+    Node.__init__(self, path)
 
-        Node.__init__(self, path)
+    Compiler(source, self, tk, cfg, c = c)
 
-    def __init_object__(self, source, tk, cfg):
-
-        self.source = source
-        self.toolkit = tk
-        self.cfg = cfg
-        path = source.name_relative
-        c = path.extension == 'c'
-        path = path.without_last_extension()
-        if len(path.extension):
-          path = path.with_extension('%s.%s' % (path.extension, tk.object_extension()))
-        else:
-          path = path.with_extension(tk.object_extension())
-        Node.__init__(self, path)
-
-        Compiler(source, self, tk, cfg, c = c)
-
-    def mkdeps(self):
-
-        return self._builder.mkdeps()
+  def mkdeps(self):
+    return self._builder.mkdeps()
 
 Node.extensions['o'] = Object
 
@@ -1939,49 +1918,49 @@ def all_objects_if_none(nodes):
 
 def dot_merge(nodes):
 
-    def rec(n, d, marks = {}, skip = False):
-        if not skip:
-            print('  node_%s [label="%s"]' % (n.uid, n.name()))
-        for s in d:
-            rec(s, d[s], marks)
-            k = (n.uid, s.uid)
-            if k not in marks:
-                marks[k] = None
-                print('  node_%s -> node_%s' % k)
+  def rec(n, d, marks = {}, skip = False):
+    if not skip:
+      print('  node_%s [label="%s"]' % (n.uid, n.name()))
+    for s in d:
+      rec(s, d[s], marks)
+      k = (n.uid, s.uid)
+      if k not in marks:
+        marks[k] = None
+        print('  node_%s -> node_%s' % k)
 
-    print('digraph')
-    print('{')
-    deps = deps_merge(all_objects_if_none(nodes))
-    marks = {}
-    print('  {')
-    print('    rank=same')
-    for n in deps:
-        print('    node_%s [label="%s"]' % (n.uid, n.name()))
-    print('  }')
-    for n in deps:
-        rec(n, deps[n], marks, True)
-    print('}')
+  print('digraph')
+  print('{')
+  deps = deps_merge(all_objects_if_none(nodes))
+  marks = {}
+  print('  {')
+  print('  rank=same')
+  for n in deps:
+    print('  node_%s [label="%s"]' % (n.uid, n.name()))
+  print('  }')
+  for n in deps:
+    rec(n, deps[n], marks, True)
+  print('}')
 
 def dot_spread(nodes):
 
-    def rec(n, d, i = 0):
-        me = i
-        print('  node_%s [label="%s"]' % (me, n.name()))
-        for s in d:
-            si = i + 1
-            i = rec(s, d[s], si)
-            k = (s.uid, n.uid)
-            print('  node_%s -> node_%s' % (me, si))
-        return i
+  def rec(n, d, i = 0):
+    me = i
+    print('  node_%s [label="%s"]' % (me, n.name()))
+    for s in d:
+      si = i + 1
+      i = rec(s, d[s], si)
+      k = (s.uid, n.uid)
+      print('  node_%s -> node_%s' % (me, si))
+    return i
 
 
-    print('digraph')
-    print('{')
-    deps = deps_merge(all_objects_if_none(nodes))
-    i = 0
-    for n in deps:
-        i = rec(n, deps[n], i) + 1
-    print('}')
+  print('digraph')
+  print('{')
+  deps = deps_merge(all_objects_if_none(nodes))
+  i = 0
+  for n in deps:
+    i = rec(n, deps[n], i) + 1
+  print('}')
 
 command_add('cxx-deps-dot-merge', dot_merge)
 command_add('cxx-deps-dot', dot_spread)
@@ -2004,76 +1983,76 @@ def find_library(token = None,
 
 class PkgConfig():
 
-    try:
-      subprocess.check_output(['which', 'pkg-config'])
-      available = True
-    except:
-      available = False
+  try:
+    subprocess.check_output(['which', 'pkg-config'])
+    available = True
+  except:
+    available = False
 
-    def __init__(self, package, version = None):
-      self.__package = package
-      self.__include_path = None
-      self.__library_path = None
-      self.__library = None
-      self.__exists = None
-      self.__prefix = None
-      self.__version = None
+  def __init__(self, package, version = None):
+    self.__package = package
+    self.__include_path = None
+    self.__library_path = None
+    self.__library = None
+    self.__exists = None
+    self.__prefix = None
+    self.__version = None
 
-    @property
-    def exists(self):
-      if self.__exists is None:
-        try:
-          self.__pkg_config([])
-          self.__exists = True
-        except:
-          self.__exists = False
-      return self.__exists
+  @property
+  def exists(self):
+    if self.__exists is None:
+      try:
+        self.__pkg_config([])
+        self.__exists = True
+      except:
+        self.__exists = False
+    return self.__exists
 
-    def __pkg_config(self, cmd):
-      base = ['pkg-config', self.__package]
-      if self.__version is not None:
-        base += ['--exact-version', str(self.__version)]
-      output = subprocess.check_output(base + cmd)
-      return output.decode('utf-8').strip().split()
+  def __pkg_config(self, cmd):
+    base = ['pkg-config', self.__package]
+    if self.__version is not None:
+      base += ['--exact-version', str(self.__version)]
+    output = subprocess.check_output(base + cmd)
+    return output.decode('utf-8').strip().split()
 
-    def __flags(self, cmd, expected):
-      res = []
-      for flag in self.__pkg_config(cmd):
-        if not flag.startswith(expected):
-          raise Exception('pkg-config %s gave a strange flag: %s' % \
-                          (' '.join(cmd), flag))
-        res.append(flag[len(expected):])
-      return res
+  def __flags(self, cmd, expected):
+    res = []
+    for flag in self.__pkg_config(cmd):
+      if not flag.startswith(expected):
+        raise Exception('pkg-config %s gave a strange flag: %s' % \
+                        (' '.join(cmd), flag))
+      res.append(flag[len(expected):])
+    return res
 
-    @property
-    def include_path(self):
-      if self.__include_path is None:
-        self.__include_path = []
-        for path in self.__flags(['--cflags-only-I'], '-I'):
-          self.__include_path.append(drake.Path(path))
-      return self.__include_path
+  @property
+  def include_path(self):
+    if self.__include_path is None:
+      self.__include_path = []
+      for path in self.__flags(['--cflags-only-I'], '-I'):
+        self.__include_path.append(drake.Path(path))
+    return self.__include_path
 
-    @property
-    def library_path(self):
-      if self.__library_path is None:
-        self.__library_path = []
-        for path in self.__flags(['--libs-only-L'], '-L'):
-          self.__library_path.append(drake.Path(path))
-      return self.__library_path
+  @property
+  def library_path(self):
+    if self.__library_path is None:
+      self.__library_path = []
+      for path in self.__flags(['--libs-only-L'], '-L'):
+        self.__library_path.append(drake.Path(path))
+    return self.__library_path
 
-    @property
-    def library(self):
-      if self.__library is None:
-        self.__library = []
-        for path in self.__flags(['--libs-only-l'], '-l'):
-          self.__library.append(drake.Path(path))
-      return self.__library
+  @property
+  def library(self):
+    if self.__library is None:
+      self.__library = []
+      for path in self.__flags(['--libs-only-l'], '-l'):
+        self.__library.append(drake.Path(path))
+    return self.__library
 
-    @property
-    def prefix(self):
-      if self.__prefix is None:
-        self.__prefix = self.__pkg_config(['--variable=prefix'])[0]
-      return self.__prefix
+  @property
+  def prefix(self):
+    if self.__prefix is None:
+      self.__prefix = self.__pkg_config(['--variable=prefix'])[0]
+    return self.__prefix
 
 
 class LibraryConfiguration(drake.Configuration):

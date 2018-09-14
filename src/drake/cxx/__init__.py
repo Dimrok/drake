@@ -9,8 +9,7 @@
 import collections
 import drake
 import io
-import os
-import os.path
+import os as _OS
 import re
 import shutil
 import subprocess
@@ -1188,7 +1187,7 @@ class VisualToolkit(Toolkit):
 
     fd, path = tempfile.mkstemp()
     try:
-      with os.fdopen(fd, 'w') as f:
+      with _OS.fdopen(fd, 'w') as f:
         print(code, file = f)
       cmd = ['cl.exe', '/E', path] + self.cppflags(config)
       p = subprocess.Popen(cmd,
@@ -1203,7 +1202,7 @@ class VisualToolkit(Toolkit):
           (p.returncode, code, stderr))
       return stdout.decode("utf-8")
     finally:
-      os.remove(path)
+      _OS.remove(path)
 
   def warning_disable(self, n):
     self.flags.append('/wd%s' % n)
@@ -1630,11 +1629,11 @@ class StaticLibLinker(Builder):
     # Our 'ar' command apends files to the target, so we must rm it first
     path = self.__library.path()
     try:
-      os.remove(str(path))
+      _OS.remove(str(path))
     except:
       pass
     # Make sure the destination dir exists.
-    os.makedirs(str(path.dirname()), exist_ok = True)
+    _OS.makedirs(str(path.dirname()), exist_ok = True)
     return self.cmd('Archive %s' % self.__library, self.command)
 
   @property_memoize
@@ -2193,7 +2192,7 @@ def set_lib_id(path):
   if sys.platform == 'darwin':
     subprocess.check_output([
       'install_name_tool',
-      '-id', '@rpath/%s' % os.path.basename(str(path)),
+      '-id', '@rpath/%s' % _OS.path.basename(str(path)),
       str(path)])
     subprocess.check_output([
       'install_name_tool',
@@ -2204,7 +2203,7 @@ def set_lib_id(path):
 class PatchAndInstall(drake.Install):
 
   def get_deps_fix_rpaths(self, path):
-    os.chmod(str(path), 0o755)
+    _OS.chmod(str(path), 0o755)
     if 'dylib' in str(path):
       set_lib_id(path)
     otool_out = subprocess.check_output(['otool', '-L',  str(path)])
@@ -2216,28 +2215,28 @@ class PatchAndInstall(drake.Install):
     for l in otool_lines:
       drake.command([
         'install_name_tool',
-        '-change', l, '@rpath/%s' % (os.path.basename(l)),
+        '-change', l, '@rpath/%s' % (_OS.path.basename(l)),
         str(path)
       ])
-      dep_dir = os.path.normpath(
-        os.path.join(os.path.dirname(str(path)), '..', 'lib'))
+      dep_dir = _OS.path.normpath(
+        _OS.path.join(_OS.path.dirname(str(path)), '..', 'lib'))
       dep_file = \
-        os.path.normpath(os.path.join(dep_dir, os.path.basename(l)))
-      if not os.path.exists(dep_dir):
-        os.makedirs(dep_dir)
-      if not os.path.exists(dep_file):
+        _OS.path.normpath(_OS.path.join(dep_dir, _OS.path.basename(l)))
+      if not _OS.path.exists(dep_dir):
+        _OS.makedirs(dep_dir)
+      if not _OS.path.exists(dep_file):
         import shutil
         shutil.copy(l, dep_dir)
         self.get_deps_fix_rpaths(drake.Path(dep_file))
-        os.chmod(dep_file, 0o755)
+        _OS.chmod(dep_file, 0o755)
         set_lib_id(dep_file)
-        os.chmod(dep_file, 0o555)
-    os.chmod(str(path), 0o555)
+        _OS.chmod(dep_file, 0o555)
+    _OS.chmod(str(path), 0o555)
 
   def execute(self):
     if not super().execute():
       return False
-    if os.path.islink(str(self.target.path())):
+    if _OS.path.islink(str(self.target.path())):
       return True
     if sys.platform == 'darwin' \
        and isinstance(self.target, (DynLib, Executable)):

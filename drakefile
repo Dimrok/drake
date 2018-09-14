@@ -80,6 +80,7 @@ def configure(prefix = '.'):
     'base/mtime',
     'base/range',
     'base/runner-env',
+    'base/sub-drakefiles',
     'base/symlink',
     'base/termination',
     'base/termination-keep-successful',

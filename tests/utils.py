@@ -89,6 +89,11 @@ def assertNotIn(v, c):
   if v in c:
     raise Exception('%s in %s' % (v, c))
 
+def assertExists(path):
+  path = str(path)
+  if not os.path.exists(path):
+    raise Exception('%s does not exit' % path)
+
 def assertExcept(f):
   try:
     f()

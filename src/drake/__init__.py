@@ -2862,32 +2862,32 @@ class _Module:
   def __contains__(self, key):
     return key in self.globals
 
-def include(path, *args, **kwargs):
-    """Include a sub-drakefile.
+def include(path, drakefile = None, *args, **kwargs):
+  """Include a sub-drakefile.
 
-    path         -- Path to the directory where the drakefile is
-                    located.
-    args, kwargs -- Arguments for the drakefile's configure.
+  path         -- Path to drakefile target directory.
+  drakefile    -- Path to the drakefile (see path). If not specified, search for
+                  drakefile or drakefile.py in the directory 'path'.
+  args, kwargs -- Arguments for the drakefile's configure.
 
-    Load the drakefile found in the specified directory, merge its
-    graph with ours and return an object that has all variables
-    defined globally by the sub-drakefile as attributes.
-    """
-    path = Path(path)
-    with Drake.current.recurse(path):
-      drakefile = None
+  Load the drakefile, merge its graph with ours and return an object that has all variables
+  defined globally by the sub-drakefile as attributes.
+  """
+  path = Path(path)
+  with Drake.current.recurse(path):
+    drakefile = drakefile
+    if drakefile is None:
       names = ['drakefile', 'drakefile.py']
       for name in names:
         path = drake.path_source(name)
         if path.exists():
           drakefile = path
           break
-      if drakefile is None:
-          raise Exception('cannot find %s or %s in %s' % \
-                          (', '.join(names[:-1]), names[-1], path))
-      res = _raw_include(str(drakefile), *args, **kwargs)
-      return res
-
+    if drakefile is None:
+        raise Exception('cannot find %s or %s in %s' % \
+                        (', '.join(names[:-1]), names[-1], path))
+    res = _raw_include(str(drakefile), *args, **kwargs)
+    return res
 
 def _raw_include(path, *args, **kwargs):
   g = {

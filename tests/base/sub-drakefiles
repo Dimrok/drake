@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+# -*- python -*-
+
+import drake
+import os
+import tempfile
+
+from utils import *
+
+drakefile_template = '''import drake
+
+result = None
+
+def configure():
+
+  node = drake.nodes('beacon')
+
+  global result
+  result = drake.copy(node, '{output}')[0]
+'''
+
+with tempfile.TemporaryDirectory() as wd:
+
+  os.chdir(wd)
+  # Create files as:
+  # folder
+  # ├── beacon
+  # ├── drakefile
+  # my-custom-drakefile
+  os.mkdir('folder')
+  with open('folder/beacon', 'w') as f:
+    print('hello', file = f)
+  with open('folder/drakefile', 'w') as f:
+    print(drakefile_template.format(output = 'one'), file = f)
+  with open('my-custom-drakefile', 'w') as f:
+    print(drakefile_template.format(output = 'two'), file = f)
+
+  with drake.Drake(wd):
+    drake.include('folder').result.build()
+    assertExists(drake.Path('folder/one/beacon'))
+
+  with drake.Drake():
+    drake.include('folder',
+                  drake.path_source('my-custom-drakefile')).result.build()
+    assertExists(drake.Path('folder/two/beacon'))

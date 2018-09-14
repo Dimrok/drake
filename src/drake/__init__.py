@@ -1523,7 +1523,11 @@ class BaseNode(object, metaclass = _BaseNodeType):
 
   @property
   def dependencies(self):
-      return self.__dependencies
+    return self.__dependencies
+
+  @property
+  def final_dependencies(self):
+    return self.__dependencies
 
   @property
   def dependencies_recursive(self):
@@ -3352,7 +3356,7 @@ def __copy_stripped(source, to, strip_prefix, builder, post_process, follow_syml
     if res is source:
       raise Exception(
         'copy source and destination are the same: %s', res)
-    for dep in source.dependencies:
+    for dep in source.final_dependencies:
       if not dep.name_absolute().absolute():
         node = __copy_stripped(dep, to, strip_prefix, builder, post_process, follow_symlinks)
         if node is not None:

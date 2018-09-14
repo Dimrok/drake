@@ -19,7 +19,7 @@ import tempfile
 
 from drake.deprecation import deprecated
 from drake.utils import property_memoize
-from itertools import chain
+from itertools import chain as itertools_chain
 
 from .. import ShellCommand, Builder, Node, Path, node, command_add, debug, Expander, FileExpander
 from .. import utils
@@ -28,10 +28,7 @@ from .. import sched
 from drake.sched import logger
 
 def chain(*collections):
-  for collection in collections:
-    if collection is not None:
-      for item in collection:
-        yield item
+  return itertools_chain(*filter(bool, collections))
 
 class Config:
 

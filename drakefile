@@ -96,7 +96,7 @@ def configure(prefix = '.'):
     runner = drake.Runner(
       test,
       env = {'PYTHONPATH': '{}:{}'.format(PYTHONPATH, drake.path_source('tests'))},
-    ).status
+    )
     runner.reporting = drake.Runner.Reporting.on_failure
     check << runner.status
   # Old style tests

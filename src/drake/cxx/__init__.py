@@ -1759,7 +1759,7 @@ class Binary(Node):
         self.src_add(source, self.tk, self.cfg)
       for lib in cfg.libraries:
         self.src_add(lib, self.tk, self.cfg)
-    for lib in chain(self.dynamic_libraries):
+    for lib in chain(self.dynamic_libraries, self.static_libraries):
       self.dependency_add(lib)
 
   def clone(self, path):
@@ -1772,6 +1772,10 @@ class Binary(Node):
   @property
   def static_libraries(self):
     return self.__static_libraries
+
+  @property
+  def dependencies_to_copy(self):
+    return self.dependencies - self.static_libraries
 
   def src_add(self, source, tk, cfg):
     pointee = source

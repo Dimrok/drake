@@ -57,6 +57,7 @@ lib()
                        drake.nodes('lib.cc', ) + [dyn])
   lib_static = StaticLib('libraries/lib',
                          drake.nodes('lib.cc', ) + [sta])
+  lib_static.dependency_add(sta)
 
   # Copy those libraries.
   copied_dyn = copy(lib_dynamic, 'dynamic')

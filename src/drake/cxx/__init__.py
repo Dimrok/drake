@@ -16,6 +16,8 @@ import subprocess
 import sys
 import tempfile
 
+from typing import List, Dict, Any
+
 from drake.deprecation import deprecated
 from drake.utils import property_memoize
 from itertools import chain as itertools_chain
@@ -453,7 +455,7 @@ class Config:
 
   class Standard:
 
-    KNOWN = []
+    KNOWN: List['Config.Standard'] = []
 
     def __init__(self, name):
       self.__name = name
@@ -469,12 +471,6 @@ class Config:
         if toolkit and toolkit is GccToolkit.Kind.gcc and toolkit.version[:2] == (4, 8):
           return 'c++11'
       return 'c++-{}'.format(self.name)
-
-    def __init__(self, name):
-      self.__name = name
-
-    def __str__(self):
-      return 'C++ %s' % self.__name
 
   cxx_17 = Standard('17')
   cxx_14 = Standard('14')
@@ -717,7 +713,7 @@ class GccToolkit(Toolkit):
   def command_cxx(self):
     return self.__compiler_wrappers + [self.compiler_cxx]
 
-  @property
+  @property # type: ignore
   @deprecated
   def cxx(self):
     return self.compiler_cxx
@@ -730,7 +726,7 @@ class GccToolkit(Toolkit):
   def command_c(self):
     return self.__compiler_wrappers + [self.compiler_c]
 
-  @property
+  @property # type: ignore
   @deprecated
   def c(self):
     return self.compiler_c
@@ -739,9 +735,10 @@ class GccToolkit(Toolkit):
     return map(lambda e: bool(int(e)),
                self.preprocess_values(vars, **kwargs))
 
-  def preprocess_isdef(self, vars, **kwargs):
-    return map(lambda e: e[0] != e[1],
-               zip(vars, self.preprocess_values(vars, **kwargs)))
+  # Duplicated...
+  # def preprocess_isdef(self, vars, **kwargs):
+  #   return map(lambda e: e[0] != e[1],
+  #              zip(vars, self.preprocess_values(vars, **kwargs)))
 
   def preprocess_isdef(self, vars, config = Config(), preamble = None):
     if preamble:
@@ -1300,8 +1297,8 @@ def inclusion_dependencies(n, toolkit, config):
     assert not owner_map
     return deps
 
-__dependencies_includes = {}
-__dependencies_result = {}
+__dependencies_includes: Dict[Path, Any] = {}
+__dependencies_result: Dict[Path, Any] = {}
 __include_re = re.compile(b'\\s*#\\s*include\\s*(<|")(.*)(>|")')
 
 def mkdeps(explored_node, search, marks, cycles_map, owner_map,

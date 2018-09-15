@@ -7,9 +7,9 @@
 # See the LICENSE file for more information.
 
 import drake
-import io
 import re
 import tempfile
+
 
 class Context:
 
@@ -21,8 +21,7 @@ class Context:
                template_dir = [],
                pythonpath = (),
                hooks = {},
-               post_process = None
-             ):
+               post_process = None):
     self.content = content
     self.sources = sources
     self.pythonpath = pythonpath
@@ -38,6 +37,7 @@ class Context:
   def __exit__(self, *args, **kwargs):
     Context.current = self.__previous
 
+
 class Template(drake.Node):
 
   def __init__(self, *args, **kwargs):
@@ -50,8 +50,8 @@ class Template(drake.Node):
                pythonpath = context.pythonpath,
                hooks = context.hooks,
                lookup = context.template_dir,
-               post_process = context.post_process
-             )
+               post_process = context.post_process)
+
 
 drake.Node.extensions['tmpl'] = Template
 
@@ -85,7 +85,8 @@ class Renderer(drake.Converter):
 
   def execute(self):
     self.output('Render %s' % self.__target)
-    import mako.template, mako.lookup
+    import mako.template
+    import mako.lookup
     import mako.runtime
     import sys
     path = str(self.__template.path(absolute = True))
@@ -96,18 +97,21 @@ class Renderer(drake.Converter):
       for hook in self.__hooks[source]:
         hook(self.__content, source)
     try:
-      sys.path = [str(path) for path in  self.__pythonpath] + sys.path
+      sys.path = [str(path) for path in self.__pythonpath] + sys.path
       with open(path, 'r') as tpl, \
-           tempfile.NamedTemporaryFile(mode = 'w') as content:
+        tempfile.NamedTemporaryFile(mode = 'w') as content:
         line_number = 1
+
         def print_line_number():
           if isinstance(self.__target, (drake.cxx.Source,
                                         drake.cxx.Header)):
             print('# %d "%s"' % (line_number, path), file = content)
+
         print_line_number()
         for line in tpl:
           print(line, file = content, end = '')
-          if Renderer.mako_re.search(line): print_line_number()
+          if Renderer.mako_re.search(line):
+            print_line_number()
           line_number += 1
         content.flush()
         lookup = mako.lookup.TemplateLookup(directories = self.__lookup)

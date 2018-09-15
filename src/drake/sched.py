@@ -6,7 +6,8 @@
 #
 # See the LICENSE file for more information.
 
-import collections
+from collections import defaultdict
+
 import greenlet
 import os
 import sys
@@ -14,6 +15,7 @@ import threading
 import time
 import traceback
 import types
+from typing import DefaultDict, List
 
 import drake.debug
 import drake.threadpool
@@ -79,7 +81,7 @@ class NonInterruptible:
 
 class Scope:
 
-  __scopes = {}
+  __scopes: DefaultDict['Coroutine', List['Scope']] = defaultdict(list)
 
   def __init__(self, exception_join = False):
     super().__init__()

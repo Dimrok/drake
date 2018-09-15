@@ -6,19 +6,18 @@
 #
 # See the LICENSE file for more information.
 
-import os as _OS
 import atexit
 import collections
 import contextlib
-import drake.debug
+import enum
 import hashlib
 import inspect
-import itertools
+from itertools import chain
+import os as _OS
 import pickle
 import pipes
 import platform
 import re
-import requests
 import shutil
 import stat
 import subprocess
@@ -28,11 +27,14 @@ import time
 import types
 import warnings
 
-from drake.deprecation import deprecated
-from drake.sched import Coroutine, Scheduler
-from drake.enumeration import Enumerated
-from itertools import chain
+from typing import Any, Callable, Dict, List, Tuple, Type
 
+import requests
+
+import drake.debug
+from drake.deprecation import deprecated
+from drake.enumeration import Enumerated
+from drake.sched import Coroutine, Scheduler
 from drake.sched import logger
 from drake.utils import property_memoize, pretty_listing
 
@@ -43,8 +45,7 @@ PROFILE = 'DRAKE_PROFILE' in _OS.environ
 
 
 def _scheduled():
-  return Coroutine.current and \
-    Coroutine.current._Coroutine__scheduler
+  return Coroutine.current and Coroutine.current._Coroutine__scheduler
 
 
 def path_source(path = None):
@@ -73,13 +74,11 @@ class Drake:
   def jobs(self):
     return self.__jobs
 
-  def jobs_set(self, n):
-    n = int(n)
+  def jobs_set(self, n: int) -> None:
     if n == 1:
       self.__jobs_lock = None
     else:
       self.__jobs_lock = drake.sched.Semaphore(n)
-  jobs.setter(jobs_set)
 
   @property
   def path_source(self):
@@ -103,7 +102,7 @@ class Drake:
   def jobs_lock(self):
     return self.__jobs_lock
 
-  __previous = []
+  __previous: List['Drake'] = []
 
   def __enter__(self):
     Drake.__previous.append(Drake.current)
@@ -169,10 +168,8 @@ class Drake:
     self.__prefix = drake.Path('.')
     self.__scheduler = Scheduler(policy = drake.sched.DepthFirst())
     self.__source = drake.Path(root)
-    self.__use_mtime = self.__option(
-      'MTIME', True, use_mtime)
-    self.__adjust_mtime = self.__option(
-      'ADJUST_MTIME', True, adjust_mtime)
+    self.__use_mtime = self.__option('MTIME', True, use_mtime)
+    self.__adjust_mtime = self.__option('ADJUST_MTIME', True, adjust_mtime)
     self.__adjust_mtime_future = self.__option(
       'ADJUST_MTIME_FUTURE', False, adjust_mtime_future)
     self.__adjust_mtime_second = self.__option(
@@ -228,9 +225,9 @@ class Drake:
     if sys.platform == 'darwin':
       args['sound'] = 'Basso' if status else 'Glass'
       cmd = ('(terminal-notifier -title "\\{title}" -message "\\{message}"'
-             + (' -sound "{sound}"')
-             + (' -appIcon "{icon}"' if 'icon' in args else '')
-             + ') 2>/dev/null').format_map(args)
+             ' -sound "{sound}"'
+             ' -appIcon "{icon}"' if 'icon' in args else ''
+             ') 2>/dev/null').format_map(args)
       _OS.system(cmd)
 
   def run(self, *cfg, **kwcfg):
@@ -247,8 +244,8 @@ class Drake:
           kwcfg[formal] = effective
       # Parse arguments
       options = {
-        '--jobs': lambda j: self.jobs_set(j),
-        '-j': lambda j: self.jobs_set(j),
+        '--jobs': lambda j: self.jobs_set(int(j)),
+        '-j': lambda j: self.jobs_set(int(j)),
         '--help': help,
         '-h': help,
         '--complete-modes': complete_modes,
@@ -476,7 +473,7 @@ class Path:
 
   """Node names, similar to a filesystem path."""
 
-  cache = {}
+  cache: Dict[str, 'Path'] = {}
 
   def __new__(self,
               path,
@@ -1104,8 +1101,8 @@ class Path:
     pass
 
 
-Path.dot = Path('.')
-Path.dotdot = Path('..')
+setattr(Path, 'dot', Path('.'))
+setattr(Path, 'dotdot', Path('..'))
 
 _DEPFILE_BUILDER = Path('drake.Builder')
 
@@ -1297,7 +1294,7 @@ def path_root():
 
 class _BaseNodeTypeType(type):
 
-  node_types = {}
+  node_types: Dict[str, 'BaseNode'] = {}
 
   def __call__(c, name, *arg, **kwargs):
 
@@ -1336,8 +1333,8 @@ class BaseNode(object, metaclass = _BaseNodeType):
   source node, a generated file in the case of a target node), in
   which case its type is Node."""
 
-  uid = 0
-  extensions = {}
+  uid: int = 0
+  extensions: Dict[str, Type['BaseNode']] = {}
 
   def __init__(self, name):
     """Create a node with the given name."""
@@ -1772,7 +1769,7 @@ class Node(BaseNode):
       print('Refusing to adjust mtime of %s in the future' % self)
       return False
 
-  @BaseNode.builder.setter
+  @BaseNode.builder.setter # type: ignore
   def builder(self, builder):
     # Reset the path cache, as we might have believe that this node
     # was in the source tree, while it's actually now discovered to
@@ -1899,11 +1896,11 @@ class Builder:
 
   """Produces a set of BaseNodes from an other set of BaseNodes."""
 
-  builders = []
-  uid = 0
+  builders: List['Builder'] = []
+  uid: int = 0
 
-  name = 'build'
-  _deps_handlers = {}
+  name: str = 'build'
+  _deps_handlers: Dict[str, Callable[['Builder', Path, Any, Any], None]] = {}
 
   class Failed(Exception):
 
@@ -2433,8 +2430,7 @@ class Builder:
     marks[self] = None
 
     print('  builder_%s [label="%s", shape=rect]' % (self.uid, self.__class__))
-    for node in itertools.chain(self.__sources.values(),
-                                self.__sources_dyn.values()):
+    for node in chain(self.__sources.values(), self.__sources_dyn.values()):
         if node.dot(marks):
             print('  node_%s -> builder_%s' % (node.uid, self.uid))
     return True
@@ -2578,8 +2574,7 @@ class Converter(Builder):
   discover a node is convertible to another expected type.
   """
   def __init__(self, source, target, additional_sources = []):
-    super().__init__(itertools.chain([source], additional_sources),
-                     [target])
+    super().__init__(chain([source], additional_sources), [target])
     self.__source = source
     self.__target = target
 
@@ -2635,7 +2630,7 @@ class Expander(Builder):
   >>> builder = MyExpander('Bananas are $banana-length '
   ...                      'centimeters long.',
   ...                      [colors, lengths], target,
-  ...                      matcher = '\\$([a-zA-Z0-9][-_a-zA-Z0-9]*)')
+  ...                      matcher = '\\\$([a-zA-Z0-9][-_a-zA-Z0-9]*)')
   >>> target.path().remove()
   >>> target.build()
   Expand /tmp/.drake.expander.2
@@ -3357,7 +3352,8 @@ def __copy(sources, to, strip_prefix, builder, post_process, follow_symlinks):
                              follow_symlinks)
 
 
-__copy_stripped_cache = {}
+__copy_stripped_cache: Dict[Tuple[Path, Path, str, Builder, Callable, bool],
+                            Builder] = {}
 
 
 def __copy_stripped(source,
@@ -3438,10 +3434,7 @@ def copy(sources,
   >>> targets = copy(sources, '/tmp/.drake.copy.dest',
   ...                strip_prefix = '/tmp')
   >>> targets
-  [
-    /tmp/.drake.copy.dest/.drake.copy.source/a,
-    /tmp/.drake.copy.dest/.drake.copy.source/b
-  ]
+  [/tmp/.drake.copy.dest/.drake.copy.source/a, /tmp/.drake.copy.dest/.drake.copy.source/b]
   """
   return __copy(sources, to, strip_prefix, builder, post_process,
                 follow_symlinks)
@@ -3998,9 +3991,11 @@ class Version:
 
 class Runner(Builder):
 
-  class Reporting(Enumerated,
-                  values = ['always', 'never', 'on_failure']):
-    pass
+  @enum.unique
+  class Reporting(enum.Enum):
+    always = enum.auto()
+    never = enum.auto()
+    on_failure = enum.auto()
 
   def __init__(self,
                exe,
@@ -4271,7 +4266,6 @@ class HTTPDownload(Builder):
             file = sys.stderr)
       return False
     if self.__fingerprint is not None:
-      import hashlib
       d = hashlib.md5()
       d.update(content)
       h = d.hexdigest()
@@ -4381,7 +4375,6 @@ class TarballExtractor(ArchiveExtractor):
   def extract_with_tar(self):
     '''Use the tar(1) binary to extract the tarball.'''
 
-    import subprocess
     with self.tmpdir() as tmp:
       subprocess.check_call(['tar', 'xf', str(self.tarball.path()), '-C', tmp])
       tmp = drake.Path(tmp)
@@ -4459,8 +4452,8 @@ class Zipper(Builder):
       if self.__whole_folder:
         folder = _OS.path.commonprefix(
           [str(source.path()) for source in self.__sources])
-        assert len(folder) > 0
-        for root, dirs, files in _OS.walk(str(folder)):
+        assert folder
+        for root, _, files in _OS.walk(str(folder)):
           for file in files:
             file = drake.Path(root) / file
             filename = file.without_prefix(self.__prefix, force = True)

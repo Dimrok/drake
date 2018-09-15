@@ -8,12 +8,12 @@
 
 import os as _OS
 import atexit
+import collections
 import contextlib
 import drake.debug
 import hashlib
 import inspect
 import itertools
-import os.path
 import pickle
 import pipes
 import platform
@@ -21,7 +21,6 @@ import re
 import requests
 import shutil
 import stat
-import string
 import subprocess
 import sys
 import threading
@@ -47,6 +46,7 @@ def _scheduled():
   return Coroutine.current and \
     Coroutine.current._Coroutine__scheduler
 
+
 def path_source(path = None):
   if path is None:
     return Drake.current.path_source
@@ -55,6 +55,7 @@ def path_source(path = None):
     return path
   else:
     return Drake.current.path_source / Drake.current.prefix / path
+
 
 def duration(start, stop = None):
   '''The duration from start to stop, with nice conversion to string.'''
@@ -77,7 +78,7 @@ class Drake:
     if n == 1:
       self.__jobs_lock = None
     else:
-      self.__jobs_lock = sched.Semaphore(n)
+      self.__jobs_lock = drake.sched.Semaphore(n)
   jobs.setter(jobs_set)
 
   @property
@@ -103,6 +104,7 @@ class Drake:
     return self.__jobs_lock
 
   __previous = []
+
   def __enter__(self):
     Drake.__previous.append(Drake.current)
     Drake.current = self
@@ -127,14 +129,18 @@ class Drake:
 
   def recurse(self, path):
     class Recurser:
+
       def __init__(self, drake):
         self.__drake = drake
         self.__previous = None
+
       def __enter__(self):
         self.__previous = self.__drake.prefix
         self.__drake._Drake__prefix = self.__previous / path
+
       def __exit__(self, *args, **kwargs):
         self.__drake._Drake__prefix = self.__previous
+
     return Recurser(self)
 
   def __option(self, name, default, override = None):
@@ -153,8 +159,7 @@ class Drake:
                use_mtime = None,
                adjust_mtime = None,
                adjust_mtime_future = None,
-               adjust_mtime_second = None,
-  ):
+               adjust_mtime_second = None):
     if root is None:
       root = drake.Path('.')
     self.__jobs = 1
@@ -162,7 +167,7 @@ class Drake:
     self.__kill_builders_on_failure = kill_builders_on_failure
     self.__nodes = {}
     self.__prefix = drake.Path('.')
-    self.__scheduler = Scheduler(policy = sched.DepthFirst())
+    self.__scheduler = Scheduler(policy = drake.sched.DepthFirst())
     self.__source = drake.Path(root)
     self.__use_mtime = self.__option(
       'MTIME', True, use_mtime)
@@ -231,22 +236,21 @@ class Drake:
   def run(self, *cfg, **kwcfg):
     start = time.time()
     try:
-      g = self.__globals
-      module = self.__module
       configure = self.__configure
       specs = inspect.getfullargspec(configure)
       # Load positional arguments
       for effective, formal in zip(cfg, specs.args):
         if formal in kwcfg:
-          raise TypeError("%s() got multiple values for argument %r", specs.name, formal)
+          raise TypeError(
+            "%s() got multiple values for argument %r", specs.name, formal)
         else:
           kwcfg[formal] = effective
       # Parse arguments
       options = {
         '--jobs': lambda j: self.jobs_set(j),
-        '-j'    : lambda j : self.jobs_set(j),
+        '-j': lambda j: self.jobs_set(j),
         '--help': help,
-        '-h'    : help,
+        '-h': help,
         '--complete-modes': complete_modes,
         '--complete-options': complete_options,
         '--complete-nodes': complete_nodes,
@@ -340,13 +344,18 @@ class Drake:
       sys.exit(1)
     self.notify(0, ' '.join(args), start)
 
+
 EXPLAIN = 'DRAKE_EXPLAIN' in _OS.environ
+
+
 def explain(node, reason):
   if EXPLAIN:
     print('Execute %s because %s' % (node, reason))
 
+
 def warn(msg):
   print('Warning: %s.' % msg, file = sys.stderr)
+
 
 class Profile:
 
@@ -370,12 +379,13 @@ class Profile:
     return '%s: called %s time, %s seconds.' % (
       self.__name, self.__calls, self.__time)
 
+
 class ProfileInstance:
 
   def __init__(self, parent):
     self.__parent = parent
-    self.__time  = 0
-    self.__time  = None
+    self.__time = 0
+    self.__time = None
 
   def __enter__(self):
     self.__time = time.time()
@@ -383,12 +393,13 @@ class ProfileInstance:
   def __exit__(self, *args):
     self.__parent._Profile__calls += 1
     t = time.time() - self.__time
-    self.__parent._Profile__time  += t
+    self.__parent._Profile__time += t
 
 
 profile_hashing = Profile('files hashing')
 profile_unpickling = Profile('dependencies files reading')
 profile_pickling = Profile('dependencies files writing')
+
 
 class NodeRedefinition(Exception):
 
@@ -414,6 +425,7 @@ class NodeRedefinition(Exception):
 
     See Node.name_absolute."""
     return self.__name
+
 
 class NoBuilder(Exception):
 
@@ -458,6 +470,7 @@ class BuilderRedefinition(Exception):
 
 _RAW = 'DRAKE_RAW' in _OS.environ
 _SILENT = 'DRAKE_SILENT' in _OS.environ
+
 
 class Path:
 
@@ -634,7 +647,6 @@ class Path:
   @property
   def volume(self):
     return self.__volume
-
 
   def remove(self, err = False):
     """Remove the target file.
@@ -884,7 +896,7 @@ class Path:
     if parent is not Path.dot:
       parent.mkpath()
     if not _OS.path.exists(str(self)):
-      with open(str(self), 'w') as f:
+      with open(str(self), 'w'):
         pass
 
   def mkpath(self):
@@ -1091,10 +1103,12 @@ class Path:
   def __setstate__(self):
     pass
 
+
 Path.dot = Path('.')
 Path.dotdot = Path('..')
 
 _DEPFILE_BUILDER = Path('drake.Builder')
+
 
 class DepFile:
 
@@ -1147,7 +1161,6 @@ class DepFile:
 
   def read(self):
     """Read the hashes from the store file."""
-    res = []
     if self.path().exists():
       with profile_unpickling():
         try:
@@ -1169,6 +1182,7 @@ class DepFile:
       self.__hashes = {}
 
   Hashed = object()
+
   def up_to_date(self,
                  oldest_target,
                  oldest_mtime,
@@ -1202,12 +1216,11 @@ class DepFile:
             continue
           elif res is True or res < mtime:
             res = mtime
-          sched.logger.log(
-            'drake.Builder.mtime',
-            drake.log.LogLevel.debug,
-            '%s: %s is more recent than %s (%s > %s)' % (
-              self.__builder, n.path(), oldest_target,
-              mtime, oldest_mtime))
+          logger.log('drake.Builder.mtime',
+                     drake.log.LogLevel.debug,
+                     '%s: %s is more recent than %s (%s > %s)' % (
+                       self.__builder, n.path(), oldest_target,
+                       mtime, oldest_mtime))
       try:
         h = n.hash()
       except Exception:
@@ -1246,6 +1259,7 @@ class DepFile:
     """String representation."""
     return repr(self)
 
+
 def path_build(path = None, absolute = False):
   """Return path as found in the build directory.
 
@@ -1275,9 +1289,11 @@ def path_build(path = None, absolute = False):
     path = drake.Path(_OS.getcwd()) / path
   return path
 
+
 def path_root():
     """The directory containing the root drakefile."""
     return Path(_OS.getcwd())
+
 
 class _BaseNodeTypeType(type):
 
@@ -1291,6 +1307,7 @@ class _BaseNodeTypeType(type):
     return res
 
     return type.__call__(*arg)
+
 
 class _BaseNodeType(type, metaclass = _BaseNodeTypeType):
 
@@ -1333,7 +1350,7 @@ class BaseNode(object, metaclass = _BaseNodeType):
     BaseNode.uid += 1
     self._builder = None
     self.consumers = []
-    self.__dependencies = sched.OrderedSet()
+    self.__dependencies = drake.sched.OrderedSet()
     self.__hash = None
     self.__skippable = False
 
@@ -1368,13 +1385,14 @@ class BaseNode(object, metaclass = _BaseNodeType):
       return
     if not re.match('.*\.o$', self.makefile_name()):
       return
+
     def to_string(s):
-      from pipes import quote
       if isinstance(s, list):
         s = ' '.join(s)
       if not isinstance(s, str):
         s = str(s)
       return '"{}"'.format(re.sub(r'([\\"])', r'\\\1', s))
+
     print('''\
   {{
     "file": {file},
@@ -1406,17 +1424,15 @@ class BaseNode(object, metaclass = _BaseNodeType):
     Take necessary action to ensure this node is up to date. That
     is, roughly, run this node runner.
     """
-    import sys
     if not _scheduled():
       Coroutine(self.build, str(self), Drake.current.scheduler)
       Drake.current.scheduler.run()
     else:
-      with sched.logger.log(
-          'drake.Builder',
-          drake.log.LogLevel.trace,
-          '%s: build', self):
+      with logger.log('drake.Builder',
+                      drake.log.LogLevel.trace,
+                      '%s: build', self):
         self._build()
-        with sched.Scope() as scope:
+        with drake.sched.Scope() as scope:
           for dep in self.dependencies:
             if not dep.skippable():
               scope.run(dep.build, str(dep))
@@ -1425,7 +1441,6 @@ class BaseNode(object, metaclass = _BaseNodeType):
   def _build(self):
     if self.builder is not None:
       self.builder.run()
-
 
   @property
   def build_status(self):
@@ -1464,8 +1479,8 @@ class BaseNode(object, metaclass = _BaseNodeType):
     return False
 
   def makefile_name(self):
-    path = self.path() if isinstance(self, Node)  \
-           else Path(self.name(), virtual = False)
+    path = self.path() if isinstance(self, Node) else Path(self.name(),
+                                                           virtual = False)
     return str(path)
 
   def makefile(self, marks = None):
@@ -1735,6 +1750,7 @@ class Node(BaseNode):
 
   def touch(self, t):
     now = time.time()
+
     def set(t):
       if t > now:
         if Drake.current.adjust_mtime_future:
@@ -1744,6 +1760,7 @@ class Node(BaseNode):
       _OS.utime(str(self.path()), (t, t), follow_symlinks=False)
       self.__mtime = None
       return self.mtime_local >= t
+
     try:
       if not Drake.current.adjust_mtime_second and set(t + 0.001):
         return True
@@ -1764,6 +1781,7 @@ class Node(BaseNode):
     # There is no cute syntax to call a super setter.  See
     # http://bugs.python.org/issue14965 for instance.
     BaseNode.builder.__set__(self, builder)
+
 
 def node(path, type = None):
   """Create or get a BaseNode.
@@ -1815,7 +1833,7 @@ def nodes(*paths, type = None):
 
 
 def run_command(cmd, cwd = None, env = None, timeout = TIMEOUT,
-            **kwargs):
+                **kwargs):
   """Run the shell command.
 
   cmd -- the shell command.
@@ -1830,7 +1848,7 @@ def run_command(cmd, cwd = None, env = None, timeout = TIMEOUT,
                                  cwd = cwd, env = env, timeout = timeout,
                                  **kwargs)
     return returncode == 0
-  except getattr(__builtins__,'FileNotFoundError', IOError) as e:
+  except getattr(__builtins__, 'FileNotFoundError', IOError) as e:
     print(e, file = sys.stderr)
     return False
 
@@ -1847,11 +1865,13 @@ def command_flatten(command, env = None):
     env_ = ''
   return env_ + ' '.join(pipes.quote(str(a)) for a in command)
 
+
 @contextlib.contextmanager
 def log_time(runner):
   '''Display running times periodically.'''
   start_time = time.time()
   timer = [None]
+
   def start_timer(first = True):
     if not first:
       print("{}: running for {} already"
@@ -1863,6 +1883,7 @@ def log_time(runner):
     # termination.
     timer[0].daemon = True
     timer[0].start()
+
   start_timer()
   try:
     yield
@@ -1872,6 +1893,7 @@ def log_time(runner):
     if 'DRAKE_NO_TIME_REPORTS' not in _OS.environ:
       print('Ran {} in {}'.format(
         runner, duration(start_time, end_time)))
+
 
 class Builder:
 
@@ -1991,6 +2013,7 @@ class Builder:
       stderr = None
     if not isinstance(cmd, tuple):
       cmd = (cmd,)
+
     def fun():
       with contextlib.ExitStack() as ctx:
         if cwd is not None:
@@ -2018,12 +2041,11 @@ class Builder:
             else:
               my_env = env
             if not run_command(c,
-                           cwd = cwd,
-                           stdout = stdout, stderr = stderr,
-                           env = my_env):
+                               cwd = cwd,
+                               stdout = stdout, stderr = stderr,
+                               env = my_env):
               if throw:
-                raise Exception(
-                  'command failed: %s' % command_flatten(c, env))
+                raise Exception('command failed: %s' % command_flatten(c, env))
               else:
                 return False
         return True
@@ -2033,7 +2055,6 @@ class Builder:
     """Output pretty, or raw if drake is in raw mode."""
     if not _SILENT:
       print((not _RAW and pretty) or raw)
-
 
   CACHEDIR = Path('.drake')
 
@@ -2102,32 +2123,30 @@ class Builder:
   def run(self):
     """Build sources recursively, check if our target are up to
     date, and executed if needed."""
-    with sched.logger.log(
-        'drake.Builder',
-        drake.log.LogLevel.trace,
-        '%s: run', self):
+    with logger.log('drake.Builder',
+                    drake.log.LogLevel.trace,
+                    '%s: run', self):
       if not self.__executed:
         # If someone is already executing this builder, wait.
         if self.__executed_signal is not None:
-          sched.logger.log('drake.Builder',
-                           drake.log.LogLevel.trace,
-                           '%s: already being built, waiting', self)
-          sched.wait(self.__executed_signal)
-          sched.logger.log('drake.Builder',
-                           drake.log.LogLevel.trace,
-                           '%s: was built, resuming', self)
+          logger.log('drake.Builder',
+                     drake.log.LogLevel.trace,
+                     '%s: already being built, waiting', self)
+          drake.sched.wait(self.__executed_signal)
+          logger.log('drake.Builder',
+                     drake.log.LogLevel.trace,
+                     '%s: was built, resuming', self)
         # Otherwise, build it ourselves
         else:
-          self.__executed_signal = sched.Signal()
+          self.__executed_signal = drake.sched.Signal()
       # If we were already executed, just skip
       if self.__executed:
         if self.__executed_exception is not None:
-          sched.logger.log(
-            'drake.Builder',
-            drake.log.LogLevel.trace,
-            '%s: already built in this run with an exception', self)
+          logger.log('drake.Builder',
+                     drake.log.LogLevel.trace,
+                     '%s: already built in this run with an exception', self)
           raise self.__executed_exception
-        sched.logger.log('drake.Builder',
+        logger.log('drake.Builder',
                          drake.log.LogLevel.trace,
                          '%s: already built in this run', self)
         return
@@ -2137,8 +2156,6 @@ class Builder:
           self._depfile.register(source)
         # Reload dynamic dependencies
         execute = self.__reload_dyndeps()
-        coroutines_static = []
-        coroutines_dynamic = []
         # FIXME: symetric of can_skip_node: if a node is a
         # plain file and does not exist, err immediately (or
         # execute = True).
@@ -2147,7 +2164,7 @@ class Builder:
                         drake.log.LogLevel.debug,
                         '%s: build static dependencies', self):
           run_builders = set()
-          with sched.Scope() as scope:
+          with drake.sched.Scope() as scope:
             for node in self.__sources.values():
               if node.skippable():
                 continue
@@ -2160,7 +2177,7 @@ class Builder:
                         '%s: build dynamic dependencies', self):
           run_builders = set()
           try:
-            with sched.Scope(exception_join = True) as scope:
+            with drake.sched.Scope(exception_join = True) as scope:
               for node in self.__sources_dyn.values():
                 if node.skippable():
                   continue
@@ -2168,13 +2185,10 @@ class Builder:
                   continue
                 scope.run(node.build, str(node))
           except Exception as e:
-            logger.log(
-              'drake.Builder',
-              drake.log.LogLevel.trace,
-              '%s: error building dynamic dependency: %s', self, e)
-            explain(
-              self,
-              'some dynamic dependency could not be built: %s' % e)
+            logger.log('drake.Builder',
+                       drake.log.LogLevel.trace,
+                       '%s: error building dynamic dependency: %s', self, e)
+            explain(self, 'some dynamic dependency could not be built: %s' % e)
             execute = True
         # If any non-virtual target is missing, we must rebuild.
         mtime_implemented = True
@@ -2270,7 +2284,7 @@ class Builder:
   def _execute(self, depfile_builder):
     with contextlib.ExitStack() as ctx:
       if not Drake.current.kill_builders_on_failure:
-        ctx.enter_context(sched.NonInterruptible())
+        ctx.enter_context(drake.sched.NonInterruptible())
       self.cachedir.mkpath()
       if self.__create_dirs:
         for target in self.__targets:
@@ -2282,15 +2296,13 @@ class Builder:
         # Regenerate dynamic dependencies
         self.__sources_dyn = {}
         self._depfiles = {}
-        with logger.log(
-            'drake.Builder',
-            drake.log.LogLevel.debug,
-            '%s: recompute dynamic dependencies', self):
+        with logger.log('drake.Builder',
+                        drake.log.LogLevel.debug,
+                        '%s: recompute dynamic dependencies', self):
           self.dependencies()
-        with logger.log(
-            'drake.Builder',
-            drake.log.LogLevel.debug,
-            '%s: build dynamic dependencies', self):
+        with logger.log('drake.Builder',
+                        drake.log.LogLevel.debug,
+                        '%s: build dynamic dependencies', self):
           for node in self.__sources_dyn.values():
             # FIXME: parallelize
             node.build()
@@ -2306,7 +2318,7 @@ class Builder:
             logger.log('drake.Builder',
                        drake.log.LogLevel.trace,
                        '%s: executed', self)
-        except sched.Terminate:
+        except drake.sched.Terminate:
           raise
         except Exception as e:
           e_pretty = str(e)
@@ -2320,10 +2332,9 @@ class Builder:
         if not success:
           raise Builder.Failed(self)
         # Check every non-virtual target was built.
-        with logger.log(
-            'drake.Builder',
-            drake.log.LogLevel.trace,
-            '%s: check all targets were built', self):
+        with logger.log('drake.Builder',
+                        drake.log.LogLevel.trace,
+                        '%s: check all targets were built', self):
           for dst in self.__targets:
             if dst.missing():
               raise Exception('%s was not created by %s' % (dst, self))
@@ -2373,18 +2384,16 @@ class Builder:
           explain(self, 'dependency file %s is invalid' % f)
           return True
         handler = self._deps_handlers[f]
-        with sched.logger.log(
-            'drake.Builder',
-            drake.log.LogLevel.dump,
-            '%s: consider dependencies file %s', self, f):
+        with logger.log('drake.Builder',
+                        drake.log.LogLevel.dump,
+                        '%s: consider dependencies file %s', self, f):
           for path, (hash, data) in depfile.hashes.items():
             if path not in self.__sources and path not in self.__sources_dyn:
               node = handler(self, path, self.get_type(data), None)
               if node is not None:
-                sched.logger.log(
-                  'drake.Builder',
-                  drake.log.LogLevel.dump,
-                  '%s: add %s to sources', self, path)
+                logger.log('drake.Builder',
+                           drake.log.LogLevel.dump,
+                           '%s: add %s to sources', self, path)
                 self.__sources_dyn[node.path()] = node
 
   def execute(self):
@@ -2423,8 +2432,7 @@ class Builder:
         return True
     marks[self] = None
 
-    print('  builder_%s [label="%s", shape=rect]' % \
-          (self.uid, self.__class__))
+    print('  builder_%s [label="%s", shape=rect]' % (self.uid, self.__class__))
     for node in itertools.chain(self.__sources.values(),
                                 self.__sources_dyn.values()):
         if node.dot(marks):
@@ -2434,7 +2442,7 @@ class Builder:
   def _run_job(self, job):
     if Drake.current.jobs_lock is not None:
       with Drake.current.jobs_lock, log_time(self):
-        return sched.background(job)
+        return drake.sched.background(job)
     else:
       with log_time(self):
         return job()
@@ -2481,11 +2489,11 @@ class ShellCommand(Builder):
   """
 
   def __init__(self, sources, targets, command,
-         pretty = None,
-         cwd = None,
-         workdir = None,
-         environment = None,
-         stdout = None):
+               pretty = None,
+               cwd = None,
+               workdir = None,
+               environment = None,
+               stdout = None):
     """Create a builder that runs command.
 
     sources -- List of source nodes, or source node if
@@ -2501,23 +2509,22 @@ class ShellCommand(Builder):
     self.__command = command
     self.__pretty = pretty
     if cwd is not None:
-      warnings.warn(
-      'drake.ShellCommand `cwd` argument is deprecated in favor of `workdir`',
-      DeprecationWarning)
+      warnings.warn('drake.ShellCommand `cwd` argument is deprecated, '
+                    'use in favor of `workdir`',
+                    DeprecationWarning)
       self.__workdir = cwd
     else:
       self.__workdir = workdir
     self.__environment = environment
     self.__stdout = stdout
 
-
   def execute(self):
     """Run the command given at construction time."""
     return self.cmd(self.__pretty or ' '.join(self.command),
-            self.command,
-            cwd = self.__workdir,
-            env = self.__environment,
-            redirect_stdout = self.__stdout)
+                    self.command,
+                    cwd = self.__workdir,
+                    env = self.__environment,
+                    redirect_stdout = self.__stdout)
 
   @property
   def command(self):
@@ -2532,6 +2539,7 @@ class ShellCommand(Builder):
 
   def __str__(self):
     return 'ShellCommand(%s)' % (self.__pretty or '')
+
 
 class Dictionary(VirtualNode):
 
@@ -2664,7 +2672,7 @@ class Expander(Builder):
   """
 
   def __init__(self, dicts, target, sources = [],
-             matcher = '@([a-zA-Z0-9_-]+)@', missing_fatal = True):
+               matcher = '@([a-zA-Z0-9_-]+)@', missing_fatal = True):
     """Create and expander that expands the given dictionaries.
 
     dicts         -- The dictionaries from which to expand keys.
@@ -2697,8 +2705,7 @@ class Expander(Builder):
     for match in self.matcher.finditer(content):
       key = match.group(1)
       try:
-        content = content.replace(match.group(0),
-                    str(vars[key]))
+        content = content.replace(match.group(0), str(vars[key]))
       except KeyError:
         if self.__missing_fatal:
           print('Missing expansion: %s' % key)
@@ -2715,6 +2722,7 @@ class Expander(Builder):
   def target(self):
     """The target Node."""
     return self.__target
+
 
 class FileExpander(Expander):
   """An Expander that takes its content from a file.
@@ -2797,11 +2805,12 @@ class TextExpander(Expander):
 
   def content(self):
     """The text."""
-    return self.__text;
+    return self.__text
 
   def text(self):
     """The text."""
     return self.__text
+
 
 class FunctionExpander(Expander):
 
@@ -2862,16 +2871,17 @@ class _Module:
   def __contains__(self, key):
     return key in self.globals
 
+
 def include(path, drakefile = None, *args, **kwargs):
   """Include a sub-drakefile.
 
   path         -- Path to drakefile target directory.
-  drakefile    -- Path to the drakefile (see path). If not specified, search for
-                  drakefile or drakefile.py in the directory 'path'.
+  drakefile    -- Path to the drakefile (see path). If not specified, search
+                  for drakefile or drakefile.py in the directory 'path'.
   args, kwargs -- Arguments for the drakefile's configure.
 
-  Load the drakefile, merge its graph with ours and return an object that has all variables
-  defined globally by the sub-drakefile as attributes.
+  Load the drakefile, merge its graph with ours and return an object that has
+  all variables defined globally by the sub-drakefile as attributes.
   """
   path = Path(path)
   with Drake.current.recurse(path):
@@ -2884,22 +2894,24 @@ def include(path, drakefile = None, *args, **kwargs):
           drakefile = path
           break
     if drakefile is None:
-        raise Exception('cannot find %s or %s in %s' % \
+        raise Exception('cannot find %s or %s in %s' %
                         (', '.join(names[:-1]), names[-1], path))
     res = _raw_include(str(drakefile), *args, **kwargs)
     return res
+
 
 def _raw_include(path, *args, **kwargs):
   g = {
     'drake': drake,
   }
-  #execfile(path, g)
+  # execfile(path, g)
   with open(path) as f:
     exec(compile('__file__ = "%s"\n' % (path) + f.read(), path, 'exec'), g)
   res = _Module(g)
   if 'configure' in res:
     res.configure(*args, **kwargs)
   return res
+
 
 def dot(node, *filters):
   # FIXME: coro!
@@ -2910,10 +2922,13 @@ def dot(node, *filters):
   node.dot(marks)
   print('}')
 
+
 def compilation_database(node):
   node.compilation_database()
 
+
 _MODES = {}
+
 
 def command_add(name, action):
   """Register a new command available from the command line.
@@ -2982,10 +2997,9 @@ def _register_commands():
     print("]")
   command_add('compilation-database', compilation_database_cmd)
 
-
   def dot_show_cmd(nodes):
     if not len(nodes):
-      print('%s: dot-show: give me some nodes to show.' % \
+      print('%s: dot-show: give me some nodes to show.' %
             sys.argv[0])
     for node in nodes:
       p = subprocess.Popen('dot -Tpng | xv -',
@@ -3010,9 +3024,13 @@ def _register_commands():
       node.makefile(marks)
   command_add('makefile', makefile)
 
+
 _register_commands()
 
+
 _ARG_DOC_RE = re.compile('\\s*(\\w+)\\s*--\\s*(.*)')
+
+
 def _args_doc(doc):
   res = {}
   for line in doc.split('\n'):
@@ -3030,8 +3048,6 @@ OPTIONS:
 \t--help, -h: print this usage and exit.
 \t--jobs N, -j N: set number of concurrent jobs to N.
 ''')
-
-
   print('CONFIG:')
   doc = {}
   configure = Drake.current.configure
@@ -3070,10 +3086,12 @@ ACTIONS:
           dot and xv).''')
   sys.exit(0)
 
+
 def complete_modes():
   for mode in sorted(_MODES.keys()):
     print('%s\tswitch to %s mode' % (mode, mode))
   sys.exit(0)
+
 
 def complete_nodes():
   def res():
@@ -3082,12 +3100,15 @@ def complete_nodes():
     sys.exit(0)
   return res
 
+
 def complete_options():
   print('-j,--jobs\tset the number of parallel jobs\tnumber of parallel jobs')
   print('-h,--help\tshow usage')
   sys.exit(0)
 
+
 _DEFAULTS = []
+
 
 def add_default_node(node):
   _DEFAULTS.append(node)
@@ -3220,7 +3241,8 @@ class Copy(Builder):
     with WritePermissions(self.__target):
       target_path = str(self.__target.path())
       # shutil.copy and copy2 fail to overwrite if source is a symlink
-      if _OS.path.islink(str(self.__source.path())) and _OS.path.lexists(target_path):
+      if _OS.path.islink(str(self.__source.path())) and \
+         _OS.path.lexists(target_path):
         _OS.remove(target_path)
       try:
         shutil.copy2(str(self.__source.path()),
@@ -3228,20 +3250,20 @@ class Copy(Builder):
                      follow_symlinks = self.__follow_symlinks)
       except PermissionError as e:
         # Landing here means that we didn't have permission to do a copystat as
-        # part of the copy2. Fallback to a straight copy with a log.
+        # part of the copy2. Fallback to a straight copy with a log.
         # This fixes an issue with OS X 10.11 not enough permissions for files
         # in /usr/lib.
-        sched.logger.log(
-          'drake.copy',
-          drake.log.LogLevel.debug,
-          'unable to copy2 %s, falling back to copy', str(self.__source.path()))
+        logger.log('drake.copy',
+                   drake.log.LogLevel.debug,
+                   'unable to copy2 %s, falling back to copy',
+                   str(self.__source.path()))
         shutil.copy(str(self.__source.path()),
                     str(self.__target.path()),
                     follow_symlinks = self.__follow_symlinks)
       except OSError as e:
         if e.errno == 95 and _OS.path.lexists(target_path):
-          # On symlinks on python 3.5, alpine version, copy and copy2 perform the copy,
-          # but fail on subsequent chmod with this error
+          # On symlinks on python 3.5, alpine version, copy and copy2 perform
+          # the copy, but fail on subsequent chmod with this error
           pass
         else:
           raise e
@@ -3293,12 +3315,11 @@ class Install(Copy):
     else:
       return cmd
 
-import collections
+
 def __copy(sources, to, strip_prefix, builder, post_process, follow_symlinks):
-  with sched.logger.log(
-      'drake.copy',
-      drake.log.LogLevel.trace,
-      'copy %s to %s (strip: %s)', sources, to, strip_prefix):
+  with logger.log('drake.copy',
+                  drake.log.LogLevel.trace,
+                  'copy %s to %s (strip: %s)', sources, to, strip_prefix):
     to = drake.Path(to)
     if isinstance(sources, types.GeneratorType):
       sources = list(sources)
@@ -3320,27 +3341,45 @@ def __copy(sources, to, strip_prefix, builder, post_process, follow_symlinks):
     if multiple:
       res = []
       for node in sources:
-        res.append(__copy_stripped(node, to, strip_prefix, builder, post_process, follow_symlinks))
+        res.append(__copy_stripped(node,
+                                   to,
+                                   strip_prefix,
+                                   builder,
+                                   post_process,
+                                   follow_symlinks))
       return res
     else:
-      return __copy_stripped(sources, to, strip_prefix, builder, post_process, follow_symlinks)
+      return __copy_stripped(sources,
+                             to,
+                             strip_prefix,
+                             builder,
+                             post_process,
+                             follow_symlinks)
+
 
 __copy_stripped_cache = {}
-def __copy_stripped(source, to, strip_prefix, builder, post_process, follow_symlinks):
+
+
+def __copy_stripped(source,
+                    to,
+                    strip_prefix,
+                    builder,
+                    post_process,
+                    follow_symlinks):
   key = (source, to, Drake.current.prefix, strip_prefix, builder)
   cache = __copy_stripped_cache.get(key)
   if cache is not None:
     return cache
-  with sched.logger.log(
-      'drake.copy',
-      drake.log.LogLevel.debug,
-      'stripped copy %s to %s (strip: %s)', source, to, strip_prefix):
+  with logger.log('drake.copy',
+                  drake.log.LogLevel.debug,
+                  'stripped copy %s to %s (strip: %s)',
+                  source, to, strip_prefix):
     path = source.name_absolute()
     if strip_prefix is not None:
       path = path.without_prefix(strip_prefix)
     path = (to / path).canonize()
-    sched.logger.log('drake.copy', drake.log.LogLevel.debug,
-                     'copy as: %s', path)
+    logger.log('drake.copy', drake.log.LogLevel.debug,
+               'copy as: %s', path)
     path_abs = drake.path_build(path)
     # Break install loops.
     if path_abs in drake.Drake.current.nodes:
@@ -3354,11 +3393,17 @@ def __copy_stripped(source, to, strip_prefix, builder, post_process, follow_syml
         'copy source and destination are the same: %s', res)
     for dep in source.dependencies_to_copy:
       if not dep.name_absolute().absolute():
-        node = __copy_stripped(dep, to, strip_prefix, builder, post_process, follow_symlinks)
+        node = __copy_stripped(dep,
+                               to,
+                               strip_prefix,
+                               builder,
+                               post_process,
+                               follow_symlinks)
         if node is not None:
           res.dependency_add(node)
     __copy_stripped_cache[key] = res
     return res
+
 
 def copy(sources,
          to,
@@ -3393,17 +3438,24 @@ def copy(sources,
   >>> targets = copy(sources, '/tmp/.drake.copy.dest',
   ...                strip_prefix = '/tmp')
   >>> targets
-  [/tmp/.drake.copy.dest/.drake.copy.source/a, /tmp/.drake.copy.dest/.drake.copy.source/b]
+  [
+    /tmp/.drake.copy.dest/.drake.copy.source/a,
+    /tmp/.drake.copy.dest/.drake.copy.source/b
+  ]
   """
-  return __copy(sources, to, strip_prefix, builder, post_process, follow_symlinks)
+  return __copy(sources, to, strip_prefix, builder, post_process,
+                follow_symlinks)
 
 
-def install(sources, to, strip_prefix = None, post_process = None, follow_symlinks = True):
+def install(sources, to, strip_prefix = None, post_process = None,
+            follow_symlinks = True):
   """Convenience function to create Install builders.
 
   See documentation of copy.
   """
-  return __copy(sources, to, strip_prefix, Install, post_process, follow_symlinks)
+  return __copy(sources, to, strip_prefix, Install, post_process,
+                follow_symlinks)
+
 
 def symlink(sources, to, strip_prefix = None):
   """Convenience function to create Symlinker builders.
@@ -3466,6 +3518,7 @@ class Rule(VirtualNode):
     else:
       self.dependency_add(nodes)
 
+
 class EmptyBuilder(Builder):
 
   """Builder which execution does nothing.
@@ -3476,6 +3529,7 @@ class EmptyBuilder(Builder):
   def execute(self):
     """Do nothing."""
     return True
+
 
 class WriteBuilder(Builder):
   """Builder that write a given input to files.
@@ -3526,10 +3580,12 @@ class WriteBuilder(Builder):
           _OS.stat(path).st_mode | self.__permissions)
     return True
 
+
 def write(body, path):
   res = node(Path(path))
   WriteBuilder(body, res)
   return res
+
 
 class TouchBuilder(WriteBuilder):
 
@@ -3550,15 +3606,18 @@ class TouchBuilder(WriteBuilder):
   def __str__(self):
     return 'TouchBuilder(%r)' % self.targets()
 
+
 def touch(path):
   res = node(Path(path))
   TouchBuilder(res)
   return res
 
+
 # Architectures
 class architecture(Enumerated,
                    values = ['x86', 'x86_64', 'arm']):
   pass
+
 
 # OSes
 class os:
@@ -3580,6 +3639,7 @@ def reset():
       node.builder._Builder__sources_dyn = {}
   Drake.current._Drake__nodes = {}
 
+
 # Configuration
 class Configuration:
 
@@ -3599,9 +3659,9 @@ class Configuration:
         if (where / path).exists():
           return where, res
     raise Exception(
-      'unable to find %s in %s.' % \
-        (pretty_listing((self.__split(what)[1] for what in whats)),
-         pretty_listing(where)))
+      'unable to find %s in %s.' %
+      (pretty_listing((self.__split(what)[1] for what in whats)),
+       pretty_listing(where)))
 
   def __search(self, what, where, all):
     what = Path(what)
@@ -3627,8 +3687,7 @@ class Configuration:
             return rel
     if len(res) > 0:
       return res
-    raise Exception('Unable to find %s in %s.' % \
-                    (what, pretty_listing(where)))
+    raise Exception('Unable to find %s in %s.' % (what, pretty_listing(where)))
 
   def _search_all(self, what, where):
     return self.__search(what, where, all = True)
@@ -3646,7 +3705,7 @@ class Configuration:
       except Exception:
         pass
     if len(res) == 0:
-      raise Exception('Unable to find %s in %s.' % \
+      raise Exception('Unable to find %s in %s.' %
                       (pretty_listing(whats), pretty_listing(where)))
     if not all:
       assert prefer is not None
@@ -3689,7 +3748,7 @@ class Configuration:
 
   def _search_lib(self, what, where, major, minor, subminor):
     """ """
-    path = self.__search_version(what, where, major, minor, subminor)
+    return self.__search_version(what, where, major, minor, subminor)
 
 
 class Range:
@@ -3783,6 +3842,7 @@ class Range:
       return 'Range(%s, None)' % self.__inf
     return 'Range(%s, %s)' % (self.__inf, self.__sup)
 
+
 class Version:
 
   def __init__(self, major = None, minor = None, subminor = None):
@@ -3867,7 +3927,6 @@ class Version:
     else:
       return 'Version()'
 
-
   def __contains__(self, other):
     """Whether a version includes another.
 
@@ -3888,15 +3947,15 @@ class Version:
     """
     if self.__major is not None:
       if other.__major is None or \
-         not other.__major in self.__major:
+         other.__major not in self.__major:
         return False
       if self.__minor is not None:
         if other.__minor is None or \
-           not other.__minor in self.__minor:
+           other.__minor not in self.__minor:
           return False
         if self.__subminor is not None:
           if other.__subminor is None or \
-             not other.__subminor in self.__subminor:
+             other.__subminor not in self.__subminor:
             return False
     return True
 
@@ -3930,10 +3989,12 @@ class Version:
       return self.__major > rhs.__major
 
   def __eq__(self, rhs):
-    return all(getattr(self, a) == getattr(rhs, a) for a in ('major', 'minor', 'subminor'))
+    return all(getattr(self, a) == getattr(rhs, a) for a in (
+      'major', 'minor', 'subminor'))
 
   def __hash__(self):
     return hash(str(self))
+
 
 class Runner(Builder):
 
@@ -3955,8 +4016,7 @@ class Runner(Builder):
                out = None,
                err = None,
                status = None,
-               bench = None
-  ):
+               bench = None):
     '''
     name -- the basename for the output files, defaults to exe
     exe -- the executable to run
@@ -3986,8 +4046,8 @@ class Runner(Builder):
     elif isinstance(stdin, str):
       self.__input = stdin.encode('utf-8')
     else:
-      raise Exception(
-        'stdin must be \"str\" or \"bytes\", got \"%s\"' % type(stdin).__name__)
+      raise Exception('stdin must be "str" or "bytes", got "%s"' %
+                      type(stdin).__name__)
     self.__prefix = prefix or []
     self.stdout_reporting = Runner.Reporting.never
     self.stderr_reporting = Runner.Reporting.always
@@ -4044,7 +4104,6 @@ class Runner(Builder):
           else:
             sys.stdout.write(chr(c))
 
-
   def _report_node_binary(self, node):
     with open(str(node.path()), 'rb') as f:
       while True:
@@ -4054,8 +4113,7 @@ class Runner(Builder):
         sys.stdout.buffer.write(b)
 
   def execute(self):
-    import subprocess
-    import time
+
     def run():
       count = 0
       with open(str(self.__out.path()), 'w') as out, \
@@ -4077,14 +4135,15 @@ class Runner(Builder):
           else:
             output_env = ()
           output_cmd = (pipes.quote(str(a)) for a in self.command)
-          self.output(' '.join(chain(output_env, output_cmd)),
+          self.output(
+            ' '.join(chain(output_env, output_cmd)),
             'Run %s%s' % (
               self.__name,
               ' (%s/%s)' % (count, self.__runs) if self.__runs > 1 else ''))
           env = dict(_OS.environ)
           if self.__env is not None:
             env.update(self.__env)
-            env = { k: str(v) for k, v in env.items() }
+            env = {k: str(v) for k, v in env.items()}
           try:
             start_time = time.time()
             p = subprocess.Popen([str(c) for c in self.command],
@@ -4141,6 +4200,7 @@ class Runner(Builder):
       'env': self.__env,
     }
 
+
 class TestSuite(Rule):
 
   def __init__(self, *args, **kwargs):
@@ -4189,12 +4249,12 @@ class HTTPDownload(Builder):
     def job():
       self.output('Download {} to {}'.format(
         pretty_listing(self.__urls, any = True), self.__dest),
-                  'Download {}'.format(self.__dest))
+        'Download {}'.format(self.__dest))
       response = None
       for url in self.__urls:
         try:
           response = requests.get(url)
-        except:
+        except BaseException:
           continue
         else:
           if response.status_code == 200:
@@ -4228,23 +4288,22 @@ class HTTPDownload(Builder):
   def __repr__(self):
     return 'HTTPDownload(%s, %s)' % (self.__urls, self.__dest)
 
+
 def download(url,
              fingerprint = None,
              where = drake.Path('.'),
              name = None,
-             disable_ssl_certificate_validation = False,
-           ):
+             disable_ssl_certificate_validation = False):
   where = drake.Path(where)
   if name is None:
     from urllib.parse import urlparse
     name = drake.Path(urlparse(url).path).basename()
   target = drake.node(where / name)
-  downloader = drake.HTTPDownload(
+  drake.HTTPDownload(
     url,
     target,
     fingerprint = fingerprint,
-    disable_ssl_certificate_validation = disable_ssl_certificate_validation,
-  )
+    disable_ssl_certificate_validation = disable_ssl_certificate_validation)
   return target
 
 
@@ -4288,13 +4347,11 @@ class ArchiveExtractor(Builder):
       'Extract %s' % self.__tarball)
     self._run_job(self.extract)
     for patch in self.__patches:
-      if not self.cmd(
-          'Apply %s' % patch[0],
-          [
-            'patch', '-N', '-p', str(patch[1]),
-            '-d', str(self.__destination / self.__patch_dir),
-            '-i', patch[0].path(absolute = True)
-          ]):
+      if not self.cmd('Apply %s' % patch[0], [
+          'patch', '-N', '-p', str(patch[1]),
+          '-d', str(self.__destination / self.__patch_dir),
+          '-i', patch[0].path(absolute = True)
+      ]):
         return False
     return True
 
@@ -4310,8 +4367,8 @@ class TarballExtractor(ArchiveExtractor):
   def tmpdir(self):
     import tempfile
     return tempfile.TemporaryDirectory(
-           prefix = str(self.tarball.name().basename()) + '.',
-           dir = str(self.destination))
+      prefix = str(self.tarball.name().basename()) + '.',
+      dir = str(self.destination))
 
   def install(self, tmp):
     '''Move the extracted files to the destination.'''
@@ -4358,6 +4415,7 @@ class TarballExtractor(ArchiveExtractor):
       print(time.ctime(), "Extraction done.", file=sys.stderr)
       self.install(tmp)
 
+
 class ZipExtractor(ArchiveExtractor):
 
   def extract(self):
@@ -4370,12 +4428,14 @@ class ZipExtractor(ArchiveExtractor):
     with zipfile.ZipFile(str(self.tarball.path()), 'r') as f:
       f.extractall(str(self.destination))
 
+
 def Extractor(tarball, *args, **kwargs):
   if str(tarball).endswith('.zip'):
     type = ZipExtractor
   else:
     type = TarballExtractor
   return type(tarball = tarball, *args, **kwargs)
+
 
 class Zipper(Builder):
 
@@ -4397,8 +4457,7 @@ class Zipper(Builder):
     import zipfile
     with zipfile.ZipFile(str(self.__target.path()), 'w') as archive:
       if self.__whole_folder:
-        import os.path
-        folder = os.path.commonprefix(
+        folder = _OS.path.commonprefix(
           [str(source.path()) for source in self.__sources])
         assert len(folder) > 0
         for root, dirs, files in _OS.walk(str(folder)):
@@ -4409,7 +4468,8 @@ class Zipper(Builder):
       else:
         for source in self.__sources:
           source = source.path()
-          filename = source.canonize().without_prefix(self.__prefix, force = True)
+          filename = source.canonize().without_prefix(self.__prefix,
+                                                      force = True)
           archive.write(str(source), arcname = str(filename))
     return True
 
@@ -4419,6 +4479,7 @@ class Zipper(Builder):
 
   def __str__(self):
     return 'Zipping of %s' % self.__target
+
 
 class FileConcatenator(Builder):
   def __init__(self, target, sources):
@@ -4436,6 +4497,7 @@ class FileConcatenator(Builder):
               _OS.stat(str(self.__sources[0].path())).st_mode)
     return True
 
+
 def host():
   system = platform.system()
   if system == 'Linux':
@@ -4450,6 +4512,7 @@ def host():
   else:
     raise Exception('Unhandled system: %s' % system)
   return '%s-%s' % (platform.machine(), os_string)
+
 
 class TemporaryDirectory:
 
@@ -4471,6 +4534,7 @@ class TemporaryDirectory:
   @property
   def dir(self):
     return self.__dir
+
 
 class PythonModule(Builder):
   '''Builder to download and extract python modules using pip3.
@@ -4521,6 +4585,7 @@ class PythonModule(Builder):
                       leave_stdout = True,
                       throw = True,
                       env = environment)
+
   def hash(self):
     return self.command(None)
 
@@ -4543,7 +4608,6 @@ class Symlinker(ShellCommand):
     elif not self.__path.absolute():
       self.__path = self.__path.without_prefix(
         self.__target.path().dirname())
-
 
   @property
   def target(self):
@@ -4576,6 +4640,7 @@ class Symlinker(ShellCommand):
 
   def __str__(self):
     return 'Symlinker(%r, %r)' % (self.__linked, self.__target)
+
 
 class Symlink(Node):
 

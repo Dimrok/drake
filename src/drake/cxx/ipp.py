@@ -10,9 +10,6 @@ import drake
 import drake.cxx
 import sys
 
-from .. import Exception, Path, Version, srctree
-from .  import Config, StaticLib
-
 class IPP(drake.cxx.LibraryConfiguration):
 
     """Configuration for the IPP library."""

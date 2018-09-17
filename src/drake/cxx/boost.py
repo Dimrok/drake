@@ -11,6 +11,7 @@ import drake.cxx
 import itertools
 import os.path
 import sys
+import copy
 
 from .. import Path, Version
 from .  import Config, StaticLib
@@ -201,8 +202,11 @@ class Boost(drake.Configuration):
   def version(self):
     return self.__version
 
+  @staticmethod
+  def libraries():
+    return copy.copy(Boost.__libraries)
 
-for prop, library in Boost._Boost__libraries.items():
+for prop, library in Boost.libraries().items():
   def unclosure(prop, library):
     def library_getter(self, static):
       name = '_Boost__%s_%s' % (prop,

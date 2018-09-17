@@ -65,7 +65,7 @@ class CMakeBuilder(drake.Builder):
           return False
     return True
 
-  @property
+  @property # type: ignore
   @lru_cache(maxsize=1)
   def cmake_cmd(self):
     cmd = ['cmake']

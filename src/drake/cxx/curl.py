@@ -10,7 +10,7 @@ import drake
 import drake.cxx
 import sys
 
-from .. import Exception, Path, Version, srctree
+from .. import Path, Version
 from .  import Config, StaticLib
 
 class Curl(drake.Configuration):
@@ -30,7 +30,7 @@ class Curl(drake.Configuration):
             test = [Path(prefix)]
         for i in range(len(test)):
             if not test[i].absolute:
-                test[i] = srctree() / test[i]
+                test[i] = drake.path_source() / test[i]
         self.__prefix = self._search_all('include/curl/curl.h', test)[0]
         self.__config = drake.cxx.Config()
         self.__config.add_system_include_path(self.__prefix / 'include')

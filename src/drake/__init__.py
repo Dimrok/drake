@@ -27,14 +27,14 @@ import time
 import types
 import warnings
 
-from typing import Any, Callable, Dict, List, Tuple, Type
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
 
 import requests
 
 import drake.debug
 from drake.deprecation import deprecated
 from drake.enumeration import Enumerated
-from drake.sched import Coroutine, Scheduler
+from drake.sched import Coroutine, Scheduler, Semaphore
 from drake.sched import logger
 from drake.utils import property_memoize, pretty_listing
 
@@ -44,44 +44,45 @@ PRETTY = 'DRAKE_PRETTY' in _OS.environ
 PROFILE = 'DRAKE_PROFILE' in _OS.environ
 
 
-def _scheduled():
+def _scheduled() -> bool:
   return Coroutine.current and Coroutine.current._Coroutine__scheduler
 
 
-def path_source(path = None):
+def path_source(path: Optional[Union[str, 'Path']] = None) -> 'Path':
   if path is None:
+    assert Drake.current is not None
     return Drake.current.path_source
   path = Path(path)
   if path.absolute():
     return path
   else:
+    assert Drake.current is not None
     return Drake.current.path_source / Drake.current.prefix / path
 
 
-def duration(start, stop = None):
+def duration(start, stop: Optional[float] = None):
   '''The duration from start to stop, with nice conversion to string.'''
-  if not stop:
+  if stop is None:
     stop = time.time()
   import datetime
-  return datetime.timedelta(seconds=round(stop - start))
-
+  return datetime.timedelta(seconds = round(stop - start))
 
 class Drake:
 
-  current = None
+  current: Optional['Drake'] = None
 
   @property
-  def jobs(self):
+  def jobs(self) -> int:
     return self.__jobs
 
   def jobs_set(self, n: int) -> None:
     if n == 1:
       self.__jobs_lock = None
     else:
-      self.__jobs_lock = drake.sched.Semaphore(n)
+      self.__jobs_lock = Semaphore(n)
 
   @property
-  def path_source(self):
+  def path_source(self) -> 'Path':
     """The path to the source directory relative to the build directory."""
     return self.__source
 
@@ -95,26 +96,26 @@ class Drake:
     self.__configure = value
 
   @property
-  def scheduler(self):
+  def scheduler(self) -> sched.Scheduler:
     return self.__scheduler
 
   @property
-  def jobs_lock(self):
+  def jobs_lock(self) -> Optional[Semaphore]:
     return self.__jobs_lock
 
-  __previous: List['Drake'] = []
+  __previous: List[Optional['Drake']] = []
 
-  def __enter__(self):
+  def __enter__(self) -> 'Drake':
     Drake.__previous.append(Drake.current)
     Drake.current = self
     return self
 
-  def __exit__(self, *args):
+  def __exit__(self, *args) -> None:
     Drake.current = Drake.__previous[-1]
     del Drake.__previous[-1]
 
   @property
-  def prefix(self):
+  def prefix(self) -> 'Path':
     """The current prefix.
 
     The prefix is the path from the root of the build tree to the
@@ -123,10 +124,10 @@ class Drake:
     return self.__prefix
 
   @property
-  def nodes(self):
+  def nodes(self) -> Iterable['BaseNode']:
     return self.__nodes
 
-  def recurse(self, path):
+  def recurse(self, path: 'Path'):
     class Recurser:
 
       def __init__(self, drake):
@@ -142,7 +143,8 @@ class Drake:
 
     return Recurser(self)
 
-  def __option(self, name, default, override = None):
+  def __option(self, name: str, default: bool,
+               override: Optional[bool] = None) -> bool:
     if override is not None:
       return override
     v = _OS.environ.get('DRAKE_%s' % name)
@@ -152,30 +154,31 @@ class Drake:
       return bool(int(v))
 
   def __init__(self,
-               root = None,
-               jobs = None,
-               kill_builders_on_failure = False,
-               use_mtime = None,
-               adjust_mtime = None,
-               adjust_mtime_future = None,
-               adjust_mtime_second = None):
+               root: Optional['Path'] = None,
+               jobs: Optional[int] = None,
+               kill_builders_on_failure: bool = False,
+               use_mtime: Optional[bool] = None,
+               adjust_mtime: Optional[bool] = None,
+               adjust_mtime_future: Optional[bool] = None,
+               adjust_mtime_second: Optional[bool] = None) -> None:
     if root is None:
       root = drake.Path('.')
-    self.__jobs = 1
-    self.__jobs_lock = None
-    self.__kill_builders_on_failure = kill_builders_on_failure
-    self.__nodes = {}
-    self.__prefix = drake.Path('.')
-    self.__scheduler = Scheduler(policy = drake.sched.DepthFirst())
-    self.__source = drake.Path(root)
-    self.__use_mtime = self.__option('MTIME', True, use_mtime)
-    self.__adjust_mtime = self.__option('ADJUST_MTIME', True, adjust_mtime)
-    self.__adjust_mtime_future = self.__option(
+    self.__jobs: int = 1
+    self.__jobs_lock: Optional[Semaphore] = None
+    self.__kill_builders_on_failure: bool = kill_builders_on_failure
+    self.__nodes: Dict[Any, 'BaseNode'] = {}
+    self.__prefix: 'Path' = drake.Path('.')
+    self.__scheduler: Scheduler = Scheduler(policy = drake.sched.DepthFirst())
+    self.__source: 'Path' = drake.Path(root)
+    self.__use_mtime: bool = self.__option('MTIME', True, use_mtime)
+    self.__adjust_mtime: bool = self.__option(
+      'ADJUST_MTIME', True, adjust_mtime)
+    self.__adjust_mtime_future: bool = self.__option(
       'ADJUST_MTIME_FUTURE', False, adjust_mtime_future)
-    self.__adjust_mtime_second = self.__option(
+    self.__adjust_mtime_second: bool = self.__option(
       'ADJUST_MTIME_SECOND', False, adjust_mtime_second)
     # Load the root drakefile
-    self.__globals = {}
+    self.__globals: Dict[str, Any] = {}
     path = str(self.path_source / 'drakefile')
     if _OS.path.exists(path):
       with open(path, 'r') as drakefile:
@@ -191,32 +194,36 @@ class Drake:
       self.jobs_set(jobs)
 
   @property
-  def kill_builders_on_failure(self):
+  def kill_builders_on_failure(self) -> bool:
     return self.__kill_builders_on_failure
 
   @property
-  def use_mtime(self):
+  def use_mtime(self) -> bool:
     return self.__use_mtime
 
   @property
-  def adjust_mtime(self):
+  def adjust_mtime(self) -> bool:
     return self.__adjust_mtime
 
   @property
-  def adjust_mtime_future(self):
+  def adjust_mtime_future(self) -> bool:
     return self.__adjust_mtime_future
 
   @property
-  def adjust_mtime_second(self):
+  def adjust_mtime_second(self) -> bool:
     return self.__adjust_mtime_second
 
-  def notify(self, status, message, start, stop=None):
+  def notify(self,
+             status: int,
+             message: str,
+             start: float,
+             stop = None) -> None:
     '''Notify the user that a run was finished.'''
     icon = str(self.path_source / 'logo.png')
     args = {
       'title': '{} ({})'.format('failed' if status else 'done',
                                 duration(start, stop)),
-      'icon': icon if _OS.path.exists(icon) else None,
+      'icon': icon if _OS.path.exists(icon) else 'unknown',
       'message': message,
     }
     # For some reason, the some first characters (such as open paren
@@ -224,13 +231,13 @@ class Drake:
     # suffices.
     if sys.platform == 'darwin':
       args['sound'] = 'Basso' if status else 'Glass'
-      cmd = ('(terminal-notifier -title "\\{title}" -message "\\{message}"'
-             ' -sound "{sound}"'
-             ' -appIcon "{icon}"' if 'icon' in args else ''
-             ') 2>/dev/null').format_map(args)
+      cmd = '(terminal-notifier -title "\\{title}" -message "\\{message}"' \
+            ' -sound "{sound}"' \
+            ' -appIcon "{icon}"' if 'icon' in args else '' \
+            ') 2>/dev/null'.format_map(args)
       _OS.system(cmd)
 
-  def run(self, *cfg, **kwcfg):
+  def run(self, *cfg, **kwcfg) -> None:
     start = time.time()
     try:
       configure = self.__configure
@@ -239,7 +246,7 @@ class Drake:
       for effective, formal in zip(cfg, specs.args):
         if formal in kwcfg:
           raise TypeError(
-            "%s() got multiple values for argument %r", specs.name, formal)
+            "%s() got multiple values for argument %r", getattr(specs, 'name'), formal)
         else:
           kwcfg[formal] = effective
       # Parse arguments
@@ -272,7 +279,7 @@ class Drake:
           for a in inspect.getfullargspec(options[opt]).args:
             opt_args.append(args[i])
             del args[i]
-          cb = options[opt](*opt_args)
+          cb = options[opt](*opt_args) # type: ignore
           if cb is not None:
             callbacks.append(cb)
           continue
@@ -290,17 +297,17 @@ class Drake:
           t = specs.annotations[name]
           if t is bool:
             if value.lower() in ['true', 'yes']:
-              value = True
+              bvalue = True
             elif value.lower() in ['false', 'no']:
-              value = False
+              bvalue = False
             else:
               raise Exception('invalid value for '
                               'boolean option %s: %s' % (name, value))
           elif hasattr(t, '__drake_configure__'):
-            value = getattr(t, '__drake_configure__')(t, value)
+            bvalue = getattr(t, '__drake_configure__')(t, value)
           else:
-            value = t(value)
-          kwcfg[name] = value
+            bvalue = t(bvalue)
+          kwcfg[name] = bvalue
       # Configure
       with self:
         configure(**kwcfg)
@@ -345,25 +352,25 @@ class Drake:
 EXPLAIN = 'DRAKE_EXPLAIN' in _OS.environ
 
 
-def explain(node, reason):
+def explain(node: 'BaseNode', reason: str):
   if EXPLAIN:
     print('Execute %s because %s' % (node, reason))
 
 
-def warn(msg):
+def warn(msg: str):
   print('Warning: %s.' % msg, file = sys.stderr)
 
 
 class Profile:
 
-  def __init__(self, name):
-    self.__calls = 0
-    self.__name = name
-    self.__time = 0
+  def __init__(self, name: str) -> None:
+    self._calls: int = 0
+    self._name: str = name
+    self._time: int = 0
     if PROFILE:
       atexit.register(self.show)
 
-  def __call__(self):
+  def __call__(self) -> Any:
     if PROFILE:
       return ProfileInstance(self)
     else:
@@ -374,23 +381,23 @@ class Profile:
 
   def __str__(self):
     return '%s: called %s time, %s seconds.' % (
-      self.__name, self.__calls, self.__time)
+      self._name, self._calls, self._time)
 
 
 class ProfileInstance:
 
   def __init__(self, parent):
-    self.__parent = parent
-    self.__time = 0
-    self.__time = None
+    self._parent = parent
+    self._time = 0
+    self._time = None
 
   def __enter__(self):
-    self.__time = time.time()
+    self._time = time.time()
 
   def __exit__(self, *args):
-    self.__parent._Profile__calls += 1
-    t = time.time() - self.__time
-    self.__parent._Profile__time += t
+    self._parent._calls += 1
+    t = time.time() - self._time
+    self._parent._time += t
 
 
 profile_hashing = Profile('files hashing')
@@ -473,36 +480,35 @@ class Path:
 
   """Node names, similar to a filesystem path."""
 
-  cache: Dict[str, 'Path'] = {}
+  cache: Dict[Tuple[str, Optional[bool], Optional[bool]], 'Path'] = {}
+  str_cache: Dict[str, 'Path'] = {}
 
-  def __new__(self,
-              path,
-              absolute = None,
+  def __new__(cls: Type['Path'],
+              path: Union[str, 'Path'],
+              absolute: Optional[bool] = None,
               virtual = None,
               volume = None,
-              string = None):
-    if path.__class__ is Path:
+              string = None) -> 'Path':
+    if isinstance(path, Path):
       return path
-    elif path.__class__ is str:
+    elif isinstance(path, str):
       strkey = path
-      res = Path.cache.get(path, None)
+      res = Path.str_cache.get(path, None)
       if res is not None:
         return res
       else:
         path, absolute, virtual, volume = Path.__parse(path)
     else:
       strkey = string
-    if Path.windows:
-      key = (path, absolute, virtual, volume)
-    else:
-      key = (path, absolute, virtual)
+    key = (str(path), absolute, virtual)
     res = Path.cache.get(key, None)
     if res is None:
-      res = object.__new__(self)
+      res: 'Path' = object.__new__(cls) # type: ignore
+      assert res is not None
       res.__init(path, absolute, virtual, volume)
       Path.cache[key] = res
     if strkey is not None:
-      Path.cache[strkey] = res
+      Path.str_cache[strkey] = res
     return res
 
   def unfold(self):

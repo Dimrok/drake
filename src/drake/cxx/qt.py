@@ -6,6 +6,7 @@
 #
 # See the LICENSE file for more information.
 
+import copy
 import itertools
 import drake
 import platform
@@ -170,6 +171,10 @@ class Qt(drake.Configuration):
                     (version, self._format_search([path for path, include_subdir in prefixes]),
                      ', '.join(map(str, miss))))
 
+  @staticmethod
+  def libraries():
+    return copy.copy(Qt.__libraries)
+
   @property
   def moc(self):
     if self.__moc is None:
@@ -306,7 +311,7 @@ class Qt(drake.Configuration):
         compiler.add_dynsrc(deps_handler_name, dep)
 
 
-for prop, library in Qt._Qt__libraries.items():
+for prop, library in Qt.libraries().items():
   def unclosure(prop, library):
     def library_getter(self, static):
       name = '_Qt__%s_%s' % (prop, 'static' if static else 'dynamic')

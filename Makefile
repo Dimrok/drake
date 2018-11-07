@@ -12,16 +12,14 @@ requirements:
 
 check:
 	cd _build && ./drake //check
-
-check:
-	flake8 --max-complexity 10 --ignore E111,E251 src/drake
+	# flake8 --max-complexity 10 --ignore E111,E251 src/drake
 
 pylint:
 	pylint --rcfile .pylintrc src
 	pylint --rcfile .pylintrc tests
 
 typecheck:
-	mypy src/$(NAME)
+	mypy --ignore-missing-imports src/$(NAME)
 
 tests:
 	py.test -v $(TESTS)

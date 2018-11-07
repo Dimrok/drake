@@ -27,7 +27,7 @@ import time
 import types
 import warnings
 
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Set, Tuple, Type, Union
 
 import requests
 
@@ -124,7 +124,7 @@ class Drake:
     return self.__prefix
 
   @property
-  def nodes(self) -> Iterable['BaseNode']:
+  def nodes(self) -> Dict[Any, 'BaseNode']:
     return self.__nodes
 
   def recurse(self, path: 'Path'):
@@ -352,7 +352,7 @@ class Drake:
 EXPLAIN = 'DRAKE_EXPLAIN' in _OS.environ
 
 
-def explain(node: 'BaseNode', reason: str):
+def explain(node: 'Builder', reason: str):
   if EXPLAIN:
     print('Execute %s because %s' % (node, reason))
 
@@ -480,15 +480,18 @@ class Path:
 
   """Node names, similar to a filesystem path."""
 
-  cache: Dict[Tuple[str, Optional[bool], Optional[bool]], 'Path'] = {}
+  ocache_key_type = Tuple[Tuple[str, ...], Optional[bool], Optional[bool], str]
+  cache_key_type = Tuple[Tuple[str, ...], bool, bool, str]
+  cache: Dict[ocache_key_type, 'Path'] = {}
   str_cache: Dict[str, 'Path'] = {}
 
   def __new__(cls: Type['Path'],
-              path: Union[str, 'Path'],
+              path: Union[str, 'Path', Tuple[str, ...]],
               absolute: Optional[bool] = None,
-              virtual = None,
-              volume = None,
-              string = None) -> 'Path':
+              virtual: Optional[bool] = None,
+              volume: str = '',
+              string: Optional[str] = None) -> 'Path':
+    strkey: Optional[str] = None
     if isinstance(path, Path):
       return path
     elif isinstance(path, str):
@@ -497,29 +500,31 @@ class Path:
       if res is not None:
         return res
       else:
-        path, absolute, virtual, volume = Path.__parse(path)
+        tpath, absolute, virtual, volume = Path.__parse(path)
     else:
+      assert isinstance(path, tuple)
+      tpath = path
       strkey = string
-    key = (str(path), absolute, virtual)
+    key = (tpath, absolute, virtual, volume)
     res = Path.cache.get(key, None)
     if res is None:
       res: 'Path' = object.__new__(cls) # type: ignore
       assert res is not None
-      res.__init(path, absolute, virtual, volume)
+      res.__init(tpath, absolute, virtual, volume)
       Path.cache[key] = res
     if strkey is not None:
       Path.str_cache[strkey] = res
     return res
 
-  def unfold(self):
+  def unfold(self) -> Iterator['Path']:
     p = self
-    while p != drake.Path.dot:
+    while p != drake.Path.dot: # type: ignore
       yield p
       p = p.dirname()
 
   @classmethod
-  def rootify(self, paths):
-    res = set()
+  def rootify(self, paths: Iterator['Path']) -> Set['Path']:
+    res: Set['Path'] = set()
     for p in paths:
       insert = True
       for e in set(res):
@@ -532,14 +537,14 @@ class Path:
         res.add(p)
     return res
 
-  def __parse(path):
+  @staticmethod
+  def __parse(path: str) -> 'Path.ocache_key_type':
+    volume: str = ''
     if Path.windows:
-      volume = re.compile('^([a-zA-Z]):').match(path)
-      if volume:
-        volume = volume.group(1)
+      volume_match = re.compile('^([a-zA-Z]):').match(path)
+      if volume_match:
+        volume = str(volume_match.group(1))
         path = path[2:]
-      else:
-        volume = ''
       if path[:2] == '//' or path[:2] == '\\\\':
         path = path[2:]
         absolute = False
@@ -551,9 +556,8 @@ class Path:
       else:
         absolute = False
         virtual = False
-      path = path = tuple(re.split(r'/|\\', path))
+      tpath = tuple(re.split(r'/|\\', path))
     else:
-      volume = None
       if path[:2] == '//':
         path = path[2:]
         absolute = False
@@ -565,30 +569,28 @@ class Path:
       else:
         absolute = False
         virtual = False
-      path = tuple(path.split('/'))
-    return path, absolute, virtual, volume
-
-  separator = '/'
+      tpath = tuple(path.split('/'))
+    return tpath, absolute, virtual, volume
 
   windows = platform.system() == 'Windows'
-  if windows:
-    separator = '\\'
+  separator: str = '\\' if windows else '/'
 
-  def __init(self, path, absolute, virtual, volume):
+  def __init(self, path: Tuple[str, ...], absolute: Optional[bool],
+             virtual: Optional[bool], volume: str) -> None:
     """Build a path.
 
     path -- The path, as a string or an other Path.
     """
-    self.__absolute = absolute
-    self.__canonized = None
-    self.__path = path
-    self.__str = None
-    self.__virtual = virtual
-    self.__volume = volume
+    self.__absolute: Optional[bool] = absolute
+    self.__canonized: Optional['Path'] = None
+    self.__path: Tuple[str, ...] = path
+    self.__str: Optional[str] = None
+    self.__virtual: Optional[bool] = virtual
+    self.__volume: str = volume
 
-  def canonize(self):
+  def canonize(self) -> 'Path':
     if self.__canonized is None:
-      res = ()
+      res: Tuple[str, ...] = ()
       path = self.__path
       for i in range(len(path)):
         if path[i] == '..' and len(res) > 0 and res[-1] != '..':
@@ -606,34 +608,39 @@ class Path:
                                       volume = self.__volume)
     return self.__canonized
 
-  def absolute(self):
-      """Whether this path is absolute.
+  @property
+  def path(self) -> Tuple[str, ...]:
+    return self.__path
 
-      >>> Path('.').absolute()
-      False
-      >>> Path('foo/bar').absolute()
-      False
-      >>> Path('/').absolute()
-      True
-      >>> Path('/foo').absolute()
-      True
-      """
-      return self.__absolute
+  def absolute(self) -> bool:
+    """Whether this path is absolute.
+
+    >>> Path('.').absolute()
+    False
+    >>> Path('foo/bar').absolute()
+    False
+    >>> Path('/').absolute()
+    True
+    >>> Path('/foo').absolute()
+    True
+    """
+    return bool(self.__absolute)
 
   @property
-  def name_relative(self):
+  def name_relative(self) -> 'Path':
     """Path relative to the current drakefile."""
     if self.absolute():
       return self
     else:
+      assert drake.Drake.current is not None
       return self.without_prefix(drake.Drake.current.prefix)
 
   @property
-  def relative(self):
+  def relative(self) -> bool:
     return not self.__absolute
 
   @property
-  def virtual(self):
+  def virtual(self) -> bool:
     """Whether this path is virtual.
 
     >>> Path('.').virtual
@@ -645,13 +652,13 @@ class Path:
     >>> Path('//foo').virtual
     True
     """
-    return self.__virtual
+    return bool(self.__virtual)
 
   @property
   def volume(self):
     return self.__volume
 
-  def remove(self, err = False):
+  def remove(self, err: bool = False) -> None:
     """Remove the target file.
 
     err -- Whether this is an error for non-existent file.
@@ -685,14 +692,14 @@ class Path:
       else:
         raise
 
-  def __extension_get(self):
+  def __extension_get(self) -> str:
     parts = self.__path[-1].split('.')
     if len(parts) > 1:
       return '.'.join(parts[1:])
     else:
       return ''
 
-  def with_extension(self, value):
+  def with_extension(self, value: str) -> 'Path':
     '''The path with a different extension.
 
     >>> p = Path('foo')
@@ -738,7 +745,7 @@ class Path:
     ''
     """)
 
-  def without_last_extension(self):
+  def without_last_extension(self) -> 'Path':
     """Remove the last dot and what follows from the basename.
 
     Does nothing if there is no dot.
@@ -758,7 +765,7 @@ class Path:
     ext = '.'.join(self.extension.split('.')[:-1])
     return self.with_extension(ext)
 
-  def __str__(self):
+  def __str__(self) -> str:
     """The path as a string, adapted to the underlying OS."""
     if self.__str is None:
       if self.__absolute:
@@ -777,11 +784,11 @@ class Path:
       self.__str = prefix + body
     return self.__str
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     """Python representation."""
     return 'Path(\"%s\")' % str(self)
 
-  def __lt__(self, rhs):
+  def __lt__(self, rhs) -> bool:
     """Arbitrary comparison.
 
     >>> Path('foo') < Path('foo')
@@ -791,7 +798,7 @@ class Path:
     """
     return str(self) < str(rhs)
 
-  def __hash__(self):
+  def __hash__(self) -> int:
     """Hash value.
 
     >>> hash(Path('foo')) == hash(Path('foo'))
@@ -799,7 +806,7 @@ class Path:
     """
     return id(self)
 
-  def exists(self):
+  def exists(self) -> bool:
     """Whether the designated file or directory exists.
 
     >>> p = Path('/tmp/.drake.foo')
@@ -819,7 +826,7 @@ class Path:
     """Whether the designated file is executable by the user."""
     return _OS.access(str(self), _OS.X_OK)
 
-  def is_file(self):
+  def is_file(self) -> bool:
     """Whether the designated file exists and is a regular file.
 
     >>> p = Path('/tmp/.drake.foo')
@@ -838,7 +845,7 @@ class Path:
     """
     return _OS.path.isfile(str(self))
 
-  def basename(self):
+  def basename(self) -> 'Path':
     """The filename part of the path.
 
     This is the path without the dirname. Throws if the path has
@@ -855,7 +862,7 @@ class Path:
                 virtual = False,
                 volume = '')
 
-  def dirname(self):
+  def dirname(self) -> 'Path':
     """The directory part of the path.
 
     This is the path without the basename. Throws if the path has
@@ -867,14 +874,14 @@ class Path:
     Path(".")
     """
     if len(self.__path) == 1:
-      return Path.dot
+      return Path.dot # type: ignore
     else:
       return Path(self.__path[0:-1],
                   absolute = self.__absolute,
                   virtual = self.__virtual,
                   volume = self.__volume)
 
-  def touch(self):
+  def touch(self) -> None:
     """Create the designated file if it does not exists.
 
     Creates the parent directories if needed first.
@@ -896,13 +903,13 @@ class Path:
     foobar
     """
     parent = self.dirname()
-    if parent is not Path.dot:
+    if parent is not Path.dot: # type: ignore
       parent.mkpath()
     if not _OS.path.exists(str(self)):
       with open(str(self), 'w'):
         pass
 
-  def mkpath(self):
+  def mkpath(self) -> None:
     """Create the designated directory.
 
     Creates the parent directories if needed first.
@@ -914,9 +921,9 @@ class Path:
     True
     """
     if not _OS.path.exists(str(self)):
-        _OS.makedirs(str(self))
+      _OS.makedirs(str(self))
 
-  def __eq__(self, rhs):
+  def __eq__(self, rhs: Union[str, 'Path']) -> bool: # type: ignore
     """Whether self equals rhs.
 
     Pathes are equals if they have the same components and
@@ -935,7 +942,7 @@ class Path:
     """
     return self is drake.Path(rhs)
 
-  def __truediv__(self, rhs):
+  def __truediv__(self, rhs: Union[str, 'Path']) -> 'Path':
     """The concatenation of self and rhs.
 
     rhs -- the end of the new path, as a Path or a string.
@@ -953,9 +960,9 @@ class Path:
     Path("/absolute")
     """
     rhs = Path(rhs)
-    if self is Path.dot:
+    if self is Path.dot: # type: ignore
       return rhs
-    if rhs is Path.dot:
+    if rhs is Path.dot: # type: ignore
       return self
     if rhs.__absolute:
       return rhs
@@ -964,7 +971,7 @@ class Path:
                       virtual = self.__virtual,
                       volume = self.__volume)
 
-  def prefix_of(self, rhs):
+  def prefix_of(self, rhs: Union[str, 'Path']) -> bool:
     """Whether self is a prefix of rhs.
 
     >>> p = Path('foo/bar')
@@ -975,14 +982,14 @@ class Path:
     >>> p.prefix_of('nope')
     False
     """
-    rhs = drake.Path(rhs).canonize().__path
+    other = drake.Path(rhs).canonize().__path
     path = self.__path
-    while len(rhs) and len(path) and path[0] == rhs[0]:
-      rhs = rhs[1:]
+    while len(other) and len(path) and path[0] == other[0]:
+      other = other[1:]
       path = path[1:]
     return len(path) == 0
 
-  def without_prefix(self, rhs, force = True):
+  def without_prefix(self, rhs: Union[str, 'Path'], force = True) -> 'Path':
     """Remove rhs prefix from self.
 
     rhs -- the prefix to strip, as a Path or a string.
@@ -1011,16 +1018,16 @@ class Path:
     >>> Path('foo/bar').without_prefix('foo/bar')
     Path(".")
     """
-    rhs = drake.Path(rhs).canonize().__path
+    other = drake.Path(rhs).canonize().__path
     path = self.__path
-    while len(rhs) and len(path) and path[0] == rhs[0]:
-      rhs = rhs[1:]
+    while len(other) and len(path) and path[0] == other[0]:
+      other = other[1:]
       path = path[1:]
-    if not force and len(rhs) > 0:
+    if not force and len(other) > 0:
       return self
-    # FIXME: naive if rhs contains some '..'
-    assert '..' not in rhs
-    path = ('..',) * len(rhs) + path
+    # FIXME: naive if other contains some '..'
+    assert '..' not in other
+    path = ('..',) * len(other) + path
     if not path:
       path = ('.',)
     return drake.Path(path,
@@ -1028,10 +1035,10 @@ class Path:
                       virtual = False,
                       volume = '')
 
-  def __len__(self):
+  def __len__(self) -> int:
     return len(self.__path)
 
-  def without_suffix(self, rhs):
+  def without_suffix(self, rhs: Union[str, 'Path']) -> 'Path':
     """Remove rhs suffix from self.
 
     rhs -- the suffix to strip, as a Path or a string.
@@ -1061,17 +1068,17 @@ class Path:
                       volume = self.__volume)
 
   @classmethod
-  def cwd(self):
+  def cwd(self) -> 'Path':
     return Path(_OS.getcwd())
 
-  def list(self):
+  def list(self) -> List[str]:
     return _OS.listdir(str(self))
 
   class Pickler(pickle.Pickler):
-    def persistent_id(self, obj):
+    def persistent_id(self, obj: Any) -> Optional['Path.cache_key_type']:
       if isinstance(obj, drake.Path):
         return (
-          obj._Path__path,
+          obj._Path__path, # type: ignore
           obj.absolute(),
           obj.virtual,
           obj.volume,
@@ -1080,7 +1087,7 @@ class Path:
         return None
 
   class Unpickler(pickle.Unpickler):
-    def persistent_load(self, obj):
+    def persistent_load(self, obj: Any) -> 'Path':
       return drake.Path(
         obj[0],
         absolute = obj[1],
@@ -1088,7 +1095,7 @@ class Path:
         volume = obj[3],
       )
 
-  def __iter__(self):
+  def __iter__(self) -> Iterator[str]:
     return self.__path.__iter__()
 
   def __getnewargs__(self, *args, **kwargs):
@@ -1100,10 +1107,10 @@ class Path:
       str(self),
     )
 
-  def __getstate__(self):
+  def __getstate__(self) -> None:
     pass
 
-  def __setstate__(self):
+  def __setstate__(self) -> None:
     pass
 
 
@@ -1130,39 +1137,39 @@ class DepFile:
   assocations.
   """
 
-  def __init__(self, builder, name):
+  def __init__(self, builder: 'Builder', name: str) -> None:
     """Construct a dependency file for builder with given name."""
-    self.__builder = builder
-    self.name = name
-    self.__files = []
-    self.__invalid = False
-    self.__hashes = None
-    self.__dirty = False
+    self.__builder: 'Builder' = builder
+    self.name: str = name
+    self.__files: List[Tuple['BaseNode', bool]] = []
+    self.__invalid: bool = False
+    self.__hashes: Dict[Path, Any] = {}
+    self.__dirty: bool = False
 
   @property
-  def hashes(self):
+  def hashes(self) -> Dict[Path, Tuple[Optional[int], str]]:
     """The file hashes loaded from the disk."""
     return self.__hashes
 
   @property
-  def dirty(self):
+  def dirty(self) -> bool:
     '''Whether previous build failed.'''
     return self.__dirty
 
   @dirty.setter
-  def dirty(self, dirty):
+  def dirty(self, dirty: bool) -> None:
     self.__dirty = dirty
     self.save()
 
-  def register(self, node, source = True):
+  def register(self, node: 'BaseNode', source: bool = True) -> None:
     """Add the node to the hashed files."""
     self.__files.append((node, source))
 
-  def path(self):
+  def path(self) -> Path:
     """Path to the file storing the hashes."""
     return self.__builder.cachedir / self.name
 
-  def read(self):
+  def read(self) -> None:
     """Read the hashes from the store file."""
     if self.path().exists():
       with profile_unpickling():
@@ -1187,9 +1194,9 @@ class DepFile:
   Hashed = object()
 
   def up_to_date(self,
-                 oldest_target,
-                 oldest_mtime,
-                 mtime_implemented):
+                 oldest_target: Optional['BaseNode'],
+                 oldest_mtime: float,
+                 mtime_implemented: bool) -> bool:
     '''Whether targets are up to date wrt sources.
 
     False if building is needed. The most recent source mtime as
@@ -1209,6 +1216,7 @@ class DepFile:
       if n.missing():
         explain(self.__builder, '%s disappeared' % path)
         return False
+      assert Drake.current is not None
       if Drake.current.use_mtime and isinstance(n, Node):
         try:
           mtime = n.mtime
@@ -1234,36 +1242,36 @@ class DepFile:
         return False
     return res
 
-  def update(self):
+  def update(self) -> None:
     """Rehash all files and write to the store file."""
-    self.__hashes = dict(
-      (node.name_absolute(), (node.hash() if source else None,
-                              node.drake_type()))
-      for node, source in self.__files)
+    self.__hashes = {node.name_absolute(): (node.hash() if source else None,
+                                            node.drake_type())
+                     for node, source in self.__files}
     self.__dirty = False
     self.save()
 
-  def save(self):
+  def save(self) -> None:
     content = {'hashes': self.__hashes, 'dirty': self.__dirty}
     with profile_pickling():
       path = self.path()
       with open(str(path), 'wb') as f:
         pickle.Pickler(f).dump((0, content))
 
-  def remove(self):
+  def remove(self) -> None:
     """Rehash all files and write to the store file."""
     self.path().remove()
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     """Python representation."""
     return 'DepFile(%r, %r)' % (self.name, self.__builder)
 
-  def __str__(self):
+  def __str__(self) -> str:
     """String representation."""
     return repr(self)
 
 
-def path_build(path = None, absolute = False):
+def path_build(path: Optional[Union[str, Path]] = None,
+               absolute: bool = False) -> Path:
   """Return path as found in the build directory.
 
   This function prepend the necessary prefix to a path relative to
@@ -1285,43 +1293,42 @@ def path_build(path = None, absolute = False):
     if path.absolute():
       return path
     else:
+      assert drake.Drake.current is not None
       path = drake.Drake.current.prefix / path
   else:
+    assert drake.Drake.current is not None
     path = drake.Drake.current.prefix
   if absolute:
     path = drake.Path(_OS.getcwd()) / path
   return path
 
 
-def path_root():
+def path_root() -> Path:
     """The directory containing the root drakefile."""
     return Path(_OS.getcwd())
 
 
 class _BaseNodeTypeType(type):
 
-  node_types: Dict[str, 'BaseNode'] = {}
+  node_types: Dict[str, '_BaseNodeType'] = {}
 
-  def __call__(c, name, *arg, **kwargs):
-
-    res = type.__call__(c, name, *arg, **kwargs)
-    k = '%s.%s' % (res.__module__, res.__name__)
-    _BaseNodeTypeType.node_types[k] = res
+  def __call__(cls, name, *arg, **kwargs):
+    assert(issubclass(cls, _BaseNodeType))
+    res = type.__call__(cls, name, *arg, **kwargs)
+    key = '%s.%s' % (res.__module__, res.__name__)
+    _BaseNodeTypeType.node_types[key] = res
     return res
-
-    return type.__call__(*arg)
-
 
 class _BaseNodeType(type, metaclass = _BaseNodeTypeType):
 
-  def __call__(c, *args, **kwargs):
+  def __call__(cls, *args, **kwargs):
     try:
-      return type.__call__(c, *args, **kwargs)
-    except NodeRedefinition as e:
-      assert e.name() in Drake.current.nodes
-      node = Drake.current.nodes[e.name()]
-      if node.__class__ is not c:
-        fmt = (node.__class__.__name__, node, c.__name__)
+      return type.__call__(cls, *args, **kwargs)
+    except NodeRedefinition as error:
+      assert error.name() in Drake.current.nodes
+      node = Drake.current.nodes[error.name()]
+      if node.__class__ is not cls:
+        fmt = (node.__class__.__name__, node, cls.__name__)
         raise Exception('%s %s redefined as a %s' % fmt)
       return node
 
@@ -1342,35 +1349,36 @@ class BaseNode(object, metaclass = _BaseNodeType):
   uid: int = 0
   extensions: Dict[str, Type['BaseNode']] = {}
 
-  def __init__(self, name):
+  def __init__(self, name: Path) -> None:
     """Create a node with the given name."""
     self.__name = name = name.canonize()
     if next(iter(name)) == '..':
       raise Exception('%s is outside the build directory' % name)
+    assert Drake.current is not None
     if Drake.current.nodes.setdefault(self.__name, self) is not self:
       raise NodeRedefinition(self.__name)
-    self.uid = BaseNode.uid
+    self.uid: int = BaseNode.uid
     BaseNode.uid += 1
-    self._builder = None
-    self.consumers = []
+    self._builder: Optional['Builder'] = None
+    self.consumers: List['BaseNode'] = []
     self.__dependencies = drake.sched.OrderedSet()
-    self.__hash = None
-    self.__skippable = False
+    self.__hash: Optional[bytes] = None
+    self.__skippable: bool = False
 
-  def name(self):
+  def name(self) -> Path:
     '''The node name.'''
     return self.__name
 
   @property
-  def name_relative(self):
+  def name_relative(self) -> Path:
     """Node name, relative to the current drakefile."""
     return self.__name.name_relative
 
-  def name_absolute(self):
+  def name_absolute(self) -> Path:
     """Node name, relative to the root of the source directory."""
     return self.__name
 
-  def dot(self, marks):
+  def dot(self, marks: Dict['BaseNode', Any]) -> bool:
     """Print a dot representation of this node build graph."""
     if self in marks:
       return True
@@ -1382,7 +1390,7 @@ class BaseNode(object, metaclass = _BaseNodeType):
                                            self.uid))
     return True
 
-  def compilation_database(self):
+  def compilation_database(self) -> None:
     """Print a representation of this node compilation."""
     if self.builder is None:
       return
@@ -1409,24 +1417,25 @@ class BaseNode(object, metaclass = _BaseNodeType):
            output=to_string(self.makefile_name())))
 
   @classmethod
-  def drake_type(self):
+  def drake_type(self) -> str:
     """The qualified name of this type."""
     return '%s.%s' % (self.__module__, self.__name__)
 
-  def __str__(self):
+  def __str__(self) -> str:
     """String representation."""
     return str(self.__name)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     """Python representation."""
-    return '%s(%s)' % (self.__class__.drake_type(), self.name())
+    return '%s(%s)' % (self.drake_type(), self.name())
 
-  def build(self):
+  def build(self) -> None:
     """Build this node.
 
     Take necessary action to ensure this node is up to date. That
     is, roughly, run this node runner.
     """
+    assert Drake.current is not None
     if not _scheduled():
       Coroutine(self.build, str(self), Drake.current.scheduler)
       Drake.current.scheduler.run()
@@ -1441,15 +1450,16 @@ class BaseNode(object, metaclass = _BaseNodeType):
               scope.run(dep.build, str(dep))
         self.polish()
 
-  def _build(self):
+  def _build(self) -> None:
     if self.builder is not None:
       self.builder.run()
 
   @property
-  def build_status(self):
+  def build_status(self) -> Optional[bool]:
+    assert self.builder is not None
     return self.builder.build_status
 
-  def polish(self):
+  def polish(self) -> None:
     """A hook called when a node has been built.
 
     Called when a node has been built, that is, when all its
@@ -1468,12 +1478,12 @@ class BaseNode(object, metaclass = _BaseNodeType):
     """
     pass
 
-  def clean(self):
+  def clean(self) -> None:
     """Clean recursively for this node sources."""
     if self.builder is not None:
         self.builder.clean()
 
-  def missing(self):
+  def missing(self) -> bool:
     """Whether this node is missing and must be built.
 
     Always False, so unless redefined, BaseNode are built only if
@@ -1486,7 +1496,7 @@ class BaseNode(object, metaclass = _BaseNodeType):
                                                            virtual = False)
     return str(path)
 
-  def makefile(self, marks = None):
+  def makefile(self, marks: Optional[Set[str]] = None) -> None:
     """Print a Makefile for this node."""
     from pipes import quote
     if self.builder is None:
@@ -1500,7 +1510,7 @@ class BaseNode(object, metaclass = _BaseNodeType):
     print('%s: %s' % (self.makefile_name(),
                       ' '.join(map(lambda n: n.makefile_name(),
                                    self.dependencies))))
-    cmd = self.builder.command
+    cmd: Any = self.builder.command
     if cmd is not None:
       if isinstance(self, Node):
         print('\t@mkdir -p %s' % self.path().dirname())
@@ -1513,7 +1523,7 @@ class BaseNode(object, metaclass = _BaseNodeType):
     for dependency in self.dependencies:
       dependency.makefile(marks)
 
-  def report_dependencies(self, dependencies):
+  def report_dependencies(self, dependencies: List['BaseNode']):
     """Called when dependencies have been built.
 
     This hook is always called no matter whether the nodes
@@ -1522,44 +1532,45 @@ class BaseNode(object, metaclass = _BaseNodeType):
     pass
 
   @property
-  def builder(self):
+  def builder(self) -> Optional['Builder']:
     return self._builder
 
   @builder.setter
-  def builder(self, builder):
-    del Drake.current.nodes[self._BaseNode__name]
+  def builder(self, builder: 'Builder') -> None:
+    assert Drake.current is not None
+    del Drake.current.nodes[BaseNode.name(self)]
     self._builder = builder
-    Drake.current.nodes[self._BaseNode__name] = self
+    Drake.current.nodes[BaseNode.name(self)] = self
 
-  def dependency_add(self, dep):
+  def dependency_add(self, dep: 'BaseNode'):
     assert dep is not None
     self.__dependencies.add(dep)
 
-  def dependencies_add(self, deps):
+  def dependencies_add(self, deps: Iterator['BaseNode']):
     for dep in deps:
       self.dependency_add(dep)
 
   @property
-  def dependencies(self):
+  def dependencies(self) -> Any:
     return self.__dependencies
 
   @property
-  def dependencies_to_copy(self):
+  def dependencies_to_copy(self) -> Any:
     return self.__dependencies
 
   @property
-  def dependencies_recursive(self):
+  def dependencies_recursive(self) -> Iterator['BaseNode']:
     for dep in self.__dependencies:
       yield dep
       for sub in dep.dependencies_recursive:
         yield sub
 
-  def __lt__(self, rhs):
+  def __lt__(self, rhs: 'BaseNode') -> bool:
     """Arbitrary global order on nodes, to enable
     sorting/indexing."""
     return self.name_absolute() < rhs.name_absolute()
 
-  def hash(self):
+  def hash(self) -> Any:
     """Digest of the file as a string."""
 
     def _hash_file(hasher, path):
@@ -1587,21 +1598,21 @@ class BaseNode(object, metaclass = _BaseNodeType):
         self.__hash = hasher.digest()
     return self.__hash
 
-  def skippable(self):
+  def skippable(self) -> bool:
     if self.__skippable:
       return True
     self.__skippable = self._skippable()
     return self.__skippable
 
-  def _skippable(self):
+  def _skippable(self) -> bool:
     if self.builder is None:
       if self.missing():
         return False
     else:
-      if not self.builder._Builder__executed:
+      if not self.builder.executed:
         return False
-      if self.builder._Builder__executed_exception is not None:
-        raise self.builder._Builder__executed_exception
+      if self.builder.executed_exception is not None:
+        raise self.builder.executed_exception
     return all(dep.skippable() for dep in self.dependencies)
 
   @property
@@ -1619,10 +1630,11 @@ class VirtualNode(BaseNode):
   other nodes, but does not directly produce a file.
   """
 
-  def __init__(self, name):
+  def __init__(self, name: str) -> None:
     """Create a virtual node with the given name."""
+    assert drake.Drake.current is not None
     path = drake.Drake.current.prefix / name
-    path = drake.Path(path._Path__path, False, True)
+    path = drake.Path(path.path, False, True)
     BaseNode.__init__(self, path)
 
 
@@ -1630,20 +1642,21 @@ class Node(BaseNode):
 
   """BaseNode representing a file."""
 
-  def __init__(self, path):
+  def __init__(self, path: Union[Path, str]) -> None:
     """Construct a Node with the given path."""
+    assert drake.Drake.current is not None
     path = drake.Drake.current.prefix / path
     BaseNode.__init__(self, path)
     self.__exists = False
-    self.__mtime = None
-    self.__path = None
-    self.__path_absolute = None
+    self.__mtime: Optional[float] = None
+    self.__path: Optional[Path] = None
+    self.__path_absolute: Optional[Path] = None
 
-  def clone(self, path):
+  def clone(self, path: Path) -> 'Node':
     """Clone of this node, with an other path."""
     return Node(path)
 
-  def clean(self):
+  def clean(self) -> None:
     """Clean this node's file if it is generated, and recursively
     its sources recursively."""
     BaseNode.clean(self)
@@ -1651,7 +1664,7 @@ class Node(BaseNode):
       print('Deleting %s' % self)
       _OS.remove(str(self.path()))
 
-  def path(self, absolute = False):
+  def path(self, absolute: bool = False):
     """Filesystem path to node file, relative to the root of the
     build directory.
 
@@ -1680,7 +1693,7 @@ class Node(BaseNode):
     else:
       return self.__path
 
-  def missing(self):
+  def missing(self) -> bool:
     """Whether the associated file doesn't exist.
 
     Nodes are built if their file does not exist.
@@ -2117,7 +2130,7 @@ class Builder:
       target.report_dependencies(dependencies)
 
   @property
-  def build_status(self):
+  def build_status(self) -> Optional[bool]:
     if not self.__executed:
       return None
     else:
@@ -2448,6 +2461,24 @@ class Builder:
     else:
       with log_time(self):
         return job()
+
+  def command(self) -> List[str]:
+    raise NotImplementedError('command')
+
+  def source(self) -> 'BaseNode':
+    raise NotImplementedError('source')
+
+  @property
+  def executed(self) -> bool:
+    return self.__executed
+
+  @property
+  def executed_exception(self) -> BaseException:
+    return self.__executed_exception
+
+  @property
+  def executed_signal(self) -> drake.sched.Signal:
+    return self.__executed_signal
 
   def cleanup_source_directory(self, root_path):
     root_path = drake.Path(root_path)

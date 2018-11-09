@@ -4319,15 +4319,8 @@ class ArchiveExtractor(Builder):
     self.__patches = patches if patches is not None else ()
     self.__patch_dir = drake.Path(patch_dir)
     directory = self.__tarball.name_relative.dirname()
-    self.__targets = [node(directory / target) for target in targets]
+    self.__targets = [node(directory / target) if not isinstance(target, Node) else target for target in targets]
     self.__destination = self.__tarball.path().dirname()
-    # targets = []
-    # with tarfile.open(str(self.__tarball.path()), 'r') as f:
-    #   for name in f.getnames():
-    #     targets.append(directory / name)
-    # for target in targets:
-    #   print(target)
-    # self.__targets = nodes(*targets)
     patch_nodes = map(lambda x: x[0], self.__patches)
     Builder.__init__(self, list(chain((tarball,), patch_nodes)),
                      self.__targets,

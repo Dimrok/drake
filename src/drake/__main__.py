@@ -1,1 +1,17 @@
-../bin/drake
+#!/usr/bin/env python3
+
+import os
+import sys
+
+root = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(0, root)
+
+import drake
+
+path = '.'
+if len(sys.argv) > 1:
+  path = sys.argv[1]
+  del sys.argv[1]
+
+with drake.Drake() as drk:
+  drk.run(path)

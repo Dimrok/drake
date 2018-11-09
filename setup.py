@@ -8,7 +8,7 @@ with open('requirements.txt', 'r') as fr:
 
 setuptools.setup(
   name = 'drake',
-  version = '0.2.3',
+  version = '0.2.4',
   author = 'Quentin (mefyl) Hocquet',
   author_email = 'mefyl@gruntech.org',
   description = 'The well-formed build system',
